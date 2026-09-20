@@ -108,6 +108,16 @@ export function AuthProvider({ children }) {
       signIn,
       signOut,
       can: (permission) => Boolean(PERMISSIONS[user?.role]?.[permission]),
+      /**
+       * Whether the signed-in person holds an API permission.
+       *
+       * The list comes from the server with the session, so the interface and
+       * the API agree on one matrix instead of drifting apart. It decides what
+       * to *offer*; the server still decides what is *allowed*.
+       */
+      has: (permission) => Boolean(user?.permissions?.includes(permission)),
+      permissions: user?.permissions || [],
+      isAdmin: user?.role === 'admin',
       roleLabel: ROLE_LABELS[user?.role] || '',
       home: homeFor(user?.role),
       isField: isFieldRole(user?.role),

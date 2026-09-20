@@ -73,6 +73,7 @@ client.interceptors.response.use(
 const get = (url, params) => client.get(url, { params }).then((r) => r.data)
 const post = (url, body, config) => client.post(url, body, config).then((r) => r.data)
 const patch = (url, body) => client.patch(url, body).then((r) => r.data)
+const put = (url, body) => client.put(url, body).then((r) => r.data)
 const remove = (url) => client.delete(url).then((r) => r.data)
 
 export const api = {
@@ -84,6 +85,27 @@ export const api = {
   users: {
     list: (role) => get('/users', role ? { role } : undefined),
     team: () => get('/users/team'),
+
+    // Administration. Every one of these is admin-only at the API; the
+    // client calls them because the interface offered them, not because
+    // the interface decided they were allowed.
+    adminList: (params) => get('/users/admin', params),
+    get: (id) => get(`/users/${id}`),
+    create: (body) => post('/users', body),
+    update: (id, body) => patch(`/users/${id}`, body),
+    changeRole: (id, role, reason) => patch(`/users/${id}/role`, { role, reason }),
+    setStatus: (id, active, reason) => patch(`/users/${id}/status`, { active, reason }),
+    resetPassword: (id, password) => post(`/users/${id}/password`, { password: password || null }),
+    assignProjects: (id, projectIds) => put(`/users/${id}/projects`, { project_ids: projectIds }),
+    remove: (id) => remove(`/users/${id}`),
+  },
+  admin: {
+    overview: () => get('/admin/overview'),
+    analytics: () => get('/admin/analytics'),
+    ai: () => get('/admin/ai'),
+    refreshAi: () => post('/admin/ai/refresh'),
+    activity: (params) => get('/admin/activity', params),
+    system: () => get('/admin/system'),
   },
   dashboard: {
     get: () => get('/dashboard'),
@@ -132,6 +154,7 @@ export const api = {
   siteUpdates: {
     list: (params) => get('/site-updates', params),
     create: (body) => post('/site-updates', body),
+    update: (id, body) => patch(`/site-updates/${id}`, body),
     remove: (id) => remove(`/site-updates/${id}`),
   },
   reports: {

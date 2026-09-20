@@ -24,6 +24,7 @@ export function PhotoPicker({
   projectId,
   taskId,
   category = 'other',
+  description = '',
   value = [],
   onChange,
   label = 'Photos',
@@ -61,6 +62,7 @@ export function PhotoPicker({
       body.append('project_id', project)
       body.append('category', category)
       if (taskId) body.append('task_id', taskId)
+      if (description.trim()) body.append('description', description.trim())
 
       try {
         const saved = await api.site.uploadPhotos(body, setProgress)
@@ -74,7 +76,7 @@ export function PhotoPicker({
         setProgress(0)
       }
     },
-    [project, category, taskId, value, onChange, max],
+    [project, category, taskId, description, value, onChange, max],
   )
 
   const removePhoto = async (photo) => {

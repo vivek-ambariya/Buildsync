@@ -3,7 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { AlertTriangle, ArrowRight } from 'lucide-react'
 
 import { api } from '@/lib/api'
-import { useAuth } from '@/lib/auth'
+import { homeFor, useAuth } from '@/lib/auth'
 import { cn } from '@/lib/cn'
 import { useEnter } from '@/animations/useMotion'
 import { Button } from '@/components/ui/Button'
@@ -11,7 +11,7 @@ import { Field, Input } from '@/components/ui/Form'
 import { Logo } from '@/components/Logo'
 
 export default function Login() {
-  const { signIn, status } = useAuth()
+  const { signIn, status, home } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const scope = useEnter([])
@@ -31,7 +31,7 @@ export default function Login() {
   }, [])
 
   if (status === 'authenticated') {
-    return <Navigate to={location.state?.from?.pathname || '/app'} replace />
+    return <Navigate to={location.state?.from?.pathname || home} replace />
   }
 
   const submit = async (event) => {
@@ -39,8 +39,10 @@ export default function Login() {
     setError(null)
     setSubmitting(true)
     try {
-      await signIn(email.trim(), password)
-      navigate(location.state?.from?.pathname || '/app', { replace: true })
+      // A site manager signs in to the field app, not the portfolio: the
+      // role decides where "signed in" lands.
+      const signedIn = await signIn(email.trim(), password)
+      navigate(location.state?.from?.pathname || homeFor(signedIn?.role), { replace: true })
     } catch (err) {
       setError(err.message)
     } finally {

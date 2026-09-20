@@ -17,6 +17,7 @@ import { LoginModal } from '@/features/landing/LoginModal'
 import { Pipeline } from '@/features/landing/Pipeline'
 import { ProductPreview } from '@/features/landing/ProductPreview'
 import { ScatteredData } from '@/features/landing/ScatteredData'
+import { HeroScene } from '@/features/landing/HeroScene'
 import { ScrollRail } from '@/features/landing/ScrollRail'
 import { StatsBand } from '@/features/landing/StatsBand'
 import { gsap, parallax, wipeIn } from '@/features/landing/scroll'
@@ -64,14 +65,6 @@ const CHAPTERS = [
   { selector: '#enter', label: 'Enter' },
 ]
 
-const HEALTH = [
-  { name: 'Riverfront Residency C', actual: 91, planned: 86.7, tone: 'healthy' },
-  { name: 'Green Valley Residences', actual: 71, planned: 59.4, tone: 'healthy' },
-  { name: 'LJ Business Center', actual: 58, planned: 48.1, tone: 'healthy' },
-  { name: 'Metro Commercial Hub', actual: 44, planned: 42.8, tone: 'healthy' },
-  { name: 'Skyline Tower', actual: 40, planned: 56.6, tone: 'critical' },
-  { name: 'Sardar Industrial Park II', actual: 33, planned: 41.3, tone: 'warning' },
-]
 
 export default function Landing() {
   const { status } = useAuth()
@@ -250,58 +243,10 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* A real reading from the product, not a decorative graphic. */}
-          <div data-hero-panel className="rounded-panel border border-line bg-surface shadow-overlay">
-            <div className="flex items-center justify-between border-b border-line px-5 py-3">
-              <p className="panel-title">Portfolio, this morning</p>
-              <span className="flex items-center gap-1.5 text-micro text-muted">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-pulse-dot rounded-full bg-healthy" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-healthy" />
-                </span>
-                live
-              </span>
-            </div>
-            <ul className="divide-y divide-line">
-              {HEALTH.map((row) => {
-                const variance = row.actual - row.planned
-                return (
-                  <li key={row.name} data-hero-row className="px-5 py-3">
-                    <div className="flex items-baseline justify-between gap-3">
-                      <span className="min-w-0 flex-1 truncate text-base text-ink">{row.name}</span>
-                      <span className="shrink-0 text-base tabular text-ink">{row.actual}%</span>
-                    </div>
-                    <div className="mt-2 flex items-center gap-3">
-                      <div className="relative h-1.5 flex-1 overflow-hidden rounded-pill bg-line">
-                        <div
-                          className={cn(
-                            'h-full rounded-pill',
-                            row.tone === 'critical' ? 'bg-critical' : row.tone === 'warning' ? 'bg-amber' : 'bg-healthy',
-                          )}
-                          style={{ width: `${row.actual}%` }}
-                        />
-                        <span className="absolute top-0 h-full w-px bg-ink/45" style={{ left: `${row.planned}%` }} aria-hidden />
-                      </div>
-                      <span
-                        className={cn(
-                          'w-14 shrink-0 text-right text-micro tabular',
-                          variance <= -12 ? 'text-critical' : variance < -4 ? 'text-amber-deep' : 'text-healthy',
-                        )}
-                      >
-                        {variance > 0 ? '+' : ''}{variance.toFixed(1)} pts
-                      </span>
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
-            <div className="flex items-start gap-2.5 border-t border-line bg-critical-wash px-5 py-3">
-              <Radar size={14} className="mt-0.5 shrink-0 text-critical" />
-              <p className="text-tiny leading-relaxed text-critical">
-                <span className="font-medium">Skyline Tower is 16.7 points behind plan.</span> At the
-                current rate of build, completion lands 308 days past the contract date.
-              </p>
-            </div>
+          {/* Two acts on a loop: the site, then the room where that day's
+              work becomes a decision. */}
+          <div data-hero-panel>
+            <HeroScene />
           </div>
         </div>
       </section>
