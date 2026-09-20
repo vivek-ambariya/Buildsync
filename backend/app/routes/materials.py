@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.core.deps import CurrentUser, Database
+from app.core.deps import CurrentUser, Database, require_permission
+from app.core.permissions import P
 from app.db.mongodb import Collections as C
 from app.models.common import serialize, to_object_id, utcnow
 from app.schemas.material import MaterialCreate, MaterialUpdate
@@ -9,6 +10,10 @@ from app.services.project_service import visibility_filter
 from app.ai.engine import material_metrics, project_schedule_metrics
 
 router = APIRouter(prefix="/materials", tags=["materials"])
+
+can_create = Depends(require_permission(P.materials_create))
+can_edit = Depends(require_permission(P.materials_edit))
+can_delete = Depends(require_permission(P.materials_delete))
 
 
 async def _elapsed_days(db, project_id) -> int:
@@ -42,7 +47,7 @@ async def index(db: Database, user: CurrentUser, project_id: str | None = None, 
     return items
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED, dependencies=[can_create])
 async def create(payload: MaterialCreate, db: Database, user: CurrentUser):
     doc = payload.model_dump()
     doc["project_id"] = to_object_id(doc["project_id"])
@@ -57,7 +62,7 @@ async def create(payload: MaterialCreate, db: Database, user: CurrentUser):
     return serialize(await db[C.materials].find_one({"_id": result.inserted_id}))
 
 
-@router.patch("/{material_id}")
+@router.patch("/{material_id}", dependencies=[can_edit])
 async def update(material_id: str, payload: MaterialUpdate, db: Database, user: CurrentUser):
     oid = to_object_id(material_id)
     existing = await db[C.materials].find_one({"_id": oid}) if oid else None
@@ -85,7 +90,7 @@ async def update(material_id: str, payload: MaterialUpdate, db: Database, user: 
     return updated
 
 
-@router.delete("/{material_id}")
+@router.delete("/{material_id}", dependencies=[can_delete])
 async def remove(material_id: str, db: Database, user: CurrentUser):
     oid = to_object_id(material_id)
     existing = await db[C.materials].find_one({"_id": oid}) if oid else None

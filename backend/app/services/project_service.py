@@ -23,6 +23,26 @@ def visibility_filter(user: dict) -> dict:
     return {"$or": [{"team_ids": oid}, {"manager_id": oid}]}
 
 
+async def visible_project_ids(db: AsyncIOMotorDatabase, user: dict) -> list[ObjectId]:
+    """The `_id` of every project this person may touch. Empty means none."""
+    return [p["_id"] async for p in db[C.projects].find(visibility_filter(user), {"_id": 1})]
+
+
+async def can_reach_project(db: AsyncIOMotorDatabase, user: dict, project_id) -> bool:
+    """Whether a record hanging off `project_id` is this person's business.
+
+    Records reached by their own id — a document, a report — have to be checked
+    against the project they belong to. Without this an id from another site is
+    enough to read it, whatever the person's role allows in their own projects.
+    """
+    oid = project_id if isinstance(project_id, ObjectId) else to_object_id(project_id)
+    if not oid:
+        return False
+    return await db[C.projects].count_documents(
+        {"_id": oid, **visibility_filter(user)}, limit=1
+    ) > 0
+
+
 async def list_projects(db: AsyncIOMotorDatabase, user: dict, query: dict | None = None) -> list[dict]:
     mongo_query = {**visibility_filter(user), **(query or {})}
     people = await _people_map(db)

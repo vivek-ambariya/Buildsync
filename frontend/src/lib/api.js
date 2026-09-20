@@ -56,7 +56,12 @@ client.interceptors.response.use(
     if (status === 401 && onUnauthorised) onUnauthorised()
 
     // Keep the technical detail in the console, show the person the sentence.
-    console.error('[api]', error.config?.method?.toUpperCase(), error.config?.url, error)
+    // A 401 while checking for an existing session is the normal answer for a
+    // visitor who is not signed in, so it is not logged as a failure.
+    const expiredSessionCheck = status === 401 && error.config?.url?.endsWith('/auth/me')
+    if (!expiredSessionCheck) {
+      console.error('[api]', error.config?.method?.toUpperCase(), error.config?.url, error)
+    }
 
     const wrapped = new Error(message)
     wrapped.status = status
@@ -144,6 +149,49 @@ export const api = {
     ask: (message, projectId) => post('/ai/assistant', { message, project_id: projectId }),
     history: () => get('/ai/assistant/history'),
     clearHistory: () => remove('/ai/assistant/history'),
+  },
+  /**
+   * Site operations. A separate namespace because it is a separate surface:
+   * one site, one day, shaped for a phone. `overview` is deliberately one
+   * request — a field connection may not survive six sequential ones.
+   */
+  site: {
+    overview: (projectId) => get('/site/overview', projectId ? { project_id: projectId } : undefined),
+    tasks: (params) => get('/site/tasks', params),
+    updateTask: (id, body) => patch(`/site/tasks/${id}`, body),
+
+    progress: (projectId) => get('/site/progress', projectId ? { project_id: projectId } : undefined),
+    recordProgress: (body) => post('/site/progress', body),
+
+    photos: (params) => get('/site/photos', params),
+    uploadPhotos: (formData, onProgress) =>
+      post('/site/photos', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (event) => {
+          if (onProgress && event.total) onProgress(Math.round((event.loaded / event.total) * 100))
+        },
+      }),
+    removePhoto: (id) => remove(`/site/photos/${id}`),
+    // The gallery reads this straight into <img src>; the API guards it.
+    photoUrl: (id) => `${import.meta.env.VITE_API_URL || ''}/api/site/photos/${id}/file`,
+
+    materials: (projectId) => get('/site/materials', projectId ? { project_id: projectId } : undefined),
+    recordUsage: (materialId, body) => post(`/site/materials/${materialId}/usage`, body),
+    materialRequests: (projectId) =>
+      get('/site/material-requests', projectId ? { project_id: projectId } : undefined),
+    requestMaterial: (body) => post('/site/material-requests', body),
+
+    workforce: (projectId) => get('/site/workforce', projectId ? { project_id: projectId } : undefined),
+    recordWorkforce: (body) => post('/site/workforce', body),
+
+    issues: (params) => get('/site/issues', params),
+    reportIssue: (body) => post('/site/issues', body),
+    updateIssue: (id, body) => patch(`/site/issues/${id}`, body),
+
+    reports: (projectId) => get('/site/reports', projectId ? { project_id: projectId } : undefined),
+    submitReport: (body) => post('/site/reports', body),
+
+    documents: (params) => get('/site/documents', params),
   },
   notifications: {
     list: () => get('/notifications'),

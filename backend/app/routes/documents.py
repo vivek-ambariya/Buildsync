@@ -1,20 +1,37 @@
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
 
 from app.ai import document_ai
 from app.core.config import settings
-from app.core.deps import CurrentUser, Database
+from app.core.deps import CurrentUser, Database, require_permission
+from app.core.permissions import P
 from app.db.mongodb import Collections as C
 from app.models.common import DocumentStatus, serialize, to_object_id, utcnow
 from app.services.activity_service import log_activity
-from app.services.project_service import visibility_filter
+from app.services.project_service import can_reach_project, visibility_filter
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
+can_upload = Depends(require_permission(P.documents_upload))
+can_edit = Depends(require_permission(P.documents_edit))
+can_delete = Depends(require_permission(P.documents_delete))
+
 MAX_BYTES = 25 * 1024 * 1024
+
+
+async def _require_document(db, user: dict, document_id: str) -> dict:
+    """Fetch a document, or refuse it, without saying which of the two it was.
+
+    A document the caller cannot reach and a document that does not exist get
+    the same 404, so an id cannot be used to discover what other sites hold.
+    """
+    doc = await db[C.documents].find_one({"_id": to_object_id(document_id)})
+    if not doc or not await can_reach_project(db, user, doc.get("project_id")):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "That document does not exist.")
+    return doc
 
 
 @router.get("")
@@ -42,13 +59,10 @@ async def index(db: Database, user: CurrentUser, project_id: str | None = None,
 
 @router.get("/{document_id}")
 async def detail(document_id: str, db: Database, user: CurrentUser):
-    doc = await db[C.documents].find_one({"_id": to_object_id(document_id)})
-    if not doc:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "That document does not exist.")
-    return serialize(doc)
+    return serialize(await _require_document(db, user, document_id))
 
 
-@router.post("/upload", status_code=status.HTTP_201_CREATED)
+@router.post("/upload", status_code=status.HTTP_201_CREATED, dependencies=[can_upload])
 async def upload(
     db: Database,
     user: CurrentUser,
@@ -65,7 +79,7 @@ async def upload(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "That file is empty.")
 
     project_oid = to_object_id(project_id)
-    if not project_oid or not await db[C.projects].find_one({"_id": project_oid}):
+    if not project_oid or not await can_reach_project(db, user, project_oid):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "That project does not exist.")
 
     suffix = Path(file.filename or "upload").suffix
@@ -104,11 +118,9 @@ async def upload(
     return serialize(await db[C.documents].find_one({"_id": result.inserted_id}))
 
 
-@router.post("/{document_id}/reprocess")
+@router.post("/{document_id}/reprocess", dependencies=[can_edit])
 async def reprocess(document_id: str, db: Database, user: CurrentUser):
-    doc = await db[C.documents].find_one({"_id": to_object_id(document_id)})
-    if not doc:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "That document does not exist.")
+    doc = await _require_document(db, user, document_id)
     path = settings.storage_path / doc["stored_name"]
     if not path.exists():
         raise HTTPException(status.HTTP_410_GONE, "The stored file is no longer on disk. Upload it again.")
@@ -122,20 +134,16 @@ async def reprocess(document_id: str, db: Database, user: CurrentUser):
 
 @router.get("/{document_id}/file")
 async def download(document_id: str, db: Database, user: CurrentUser):
-    doc = await db[C.documents].find_one({"_id": to_object_id(document_id)})
-    if not doc:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "That document does not exist.")
+    doc = await _require_document(db, user, document_id)
     path = settings.storage_path / doc["stored_name"]
     if not path.exists():
         raise HTTPException(status.HTTP_410_GONE, "The stored file is no longer on disk.")
     return FileResponse(path, filename=doc["name"], media_type=doc.get("content_type") or "application/octet-stream")
 
 
-@router.delete("/{document_id}")
+@router.delete("/{document_id}", dependencies=[can_delete])
 async def remove(document_id: str, db: Database, user: CurrentUser):
-    doc = await db[C.documents].find_one({"_id": to_object_id(document_id)})
-    if not doc:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "That document does not exist.")
+    doc = await _require_document(db, user, document_id)
     (settings.storage_path / doc["stored_name"]).unlink(missing_ok=True)
     await db[C.documents].delete_one({"_id": doc["_id"]})
     await log_activity(db, actor=user, action="deleted document", entity_type="document",

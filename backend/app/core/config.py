@@ -27,6 +27,11 @@ class Settings(BaseSettings):
 
     storage_dir: str = "storage"
 
+    # The trained delay classifier produced by ml/train_model.py. Relative
+    # paths resolve against the repository root, so the default works from
+    # a clean checkout without configuration.
+    delay_model_path: str = "ml/models/buildsync_delay_model.joblib"
+
     llm_provider: str = ""
     llm_api_key: str = ""
     llm_model: str = "claude-sonnet-5"
@@ -34,6 +39,11 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def delay_model_file(self) -> Path:
+        path = Path(self.delay_model_path)
+        return path if path.is_absolute() else (BASE_DIR.parent / path)
 
     @property
     def storage_path(self) -> Path:

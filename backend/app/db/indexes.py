@@ -8,7 +8,8 @@ from app.db.mongodb import Collections as C
 log = logging.getLogger(__name__)
 
 INDEXES: dict[str, list[tuple]] = {
-    C.users: [([("email", 1)], {"unique": True})],
+    C.users: [([("email", 1)], {"unique": True}), ([("role", 1)], {}),
+              ([("active", 1), ("role", 1)], {}), ([("last_active_at", -1)], {})],
     C.projects: [([("code", 1)], {"unique": True}), ([("status", 1)], {}), ([("manager_id", 1)], {})],
     C.tasks: [([("project_id", 1), ("status", 1)], {}), ([("assignee_id", 1)], {}), ([("deadline", 1)], {})],
     C.milestones: [([("project_id", 1), ("order", 1)], {})],
@@ -17,10 +18,20 @@ INDEXES: dict[str, list[tuple]] = {
     C.documents: [([("project_id", 1), ("uploaded_at", -1)], {}), ([("doc_type", 1)], {})],
     C.site_updates: [([("project_id", 1), ("date", -1)], {})],
     C.notifications: [([("user_id", 1), ("created_at", -1)], {}), ([("read", 1)], {})],
-    C.reports: [([("created_at", -1)], {})],
+    C.reports: [([("created_at", -1)], {}), ([("generated_by_id", 1)], {}),
+                ([("project_id", 1)], {})],
     C.ai_insights: [([("project_id", 1), ("severity", 1)], {}), ([("generated_at", -1)], {})],
-    C.activities: [([("created_at", -1)], {}), ([("project_id", 1)], {})],
+    C.activities: [([("created_at", -1)], {}), ([("project_id", 1)], {}),
+                   ([("actor_id", 1), ("created_at", -1)], {}),
+                   ([("entity_type", 1), ("created_at", -1)], {})],
     C.conversations: [([("user_id", 1), ("updated_at", -1)], {})],
+    C.site_photos: [([("project_id", 1), ("taken_at", -1)], {}), ([("category", 1)], {}),
+                    ([("task_id", 1)], {})],
+    C.site_issues: [([("project_id", 1), ("created_at", -1)], {}), ([("status", 1), ("severity", 1)], {}),
+                    ([("reported_by", 1)], {})],
+    C.material_requests: [([("project_id", 1), ("created_at", -1)], {}), ([("status", 1)], {})],
+    C.workforce_logs: [([("project_id", 1), ("date", -1)], {})],
+    C.progress_updates: [([("project_id", 1), ("created_at", -1)], {}), ([("task_id", 1)], {})],
 }
 
 

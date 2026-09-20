@@ -1,14 +1,19 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.core.deps import CurrentUser, Database
+from app.core.deps import CurrentUser, Database, require_permission
+from app.core.permissions import P
 from app.db.mongodb import Collections as C
 from app.models.common import serialize, to_object_id, utcnow
-from app.schemas.site_update import SiteUpdateCreate
+from app.schemas.site_update import SiteUpdateCreate, SiteUpdateEdit
 from app.services.activity_service import broadcast_ids, log_activity, notify
 from app.services.project_service import visibility_filter
 from app.utils.dates import to_datetime
 
 router = APIRouter(prefix="/site-updates", tags=["site-updates"])
+
+can_create = Depends(require_permission(P.site_updates_create))
+can_edit = Depends(require_permission(P.site_updates_edit))
+can_delete = Depends(require_permission(P.site_updates_delete))
 
 
 @router.get("")
@@ -29,7 +34,7 @@ async def index(db: Database, user: CurrentUser, project_id: str | None = None, 
     return items
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED, dependencies=[can_create])
 async def create(payload: SiteUpdateCreate, db: Database, user: CurrentUser):
     project_oid = to_object_id(payload.project_id)
     project = await db[C.projects].find_one({"_id": project_oid}) if project_oid else None
@@ -69,11 +74,39 @@ async def create(payload: SiteUpdateCreate, db: Database, user: CurrentUser):
     return serialize(await db[C.site_updates].find_one({"_id": result.inserted_id}))
 
 
-@router.delete("/{update_id}")
+@router.patch("/{update_id}", dependencies=[can_edit])
+async def update(update_id: str, payload: SiteUpdateEdit, db: Database, user: CurrentUser):
+    """Correct a filed report.
+
+    Only the observations are editable. The project, the date and who filed it
+    are what make the report an account of a day on site, so they stay fixed.
+    """
+    oid = to_object_id(update_id)
+    existing = await db[C.site_updates].find_one({"_id": oid}) if oid else None
+    if not existing:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "That site report does not exist.")
+
+    changes = {k: v for k, v in payload.model_dump(exclude_unset=True).items() if v is not None}
+    if not changes:
+        return serialize(existing)
+    changes.update({"edited_at": utcnow(), "edited_by": to_object_id(user["id"]),
+                    "edited_by_name": user.get("name")})
+    await db[C.site_updates].update_one({"_id": oid}, {"$set": changes})
+
+    await log_activity(db, actor=user, action="edited a site report", entity_type="site_update",
+                       entity_id=update_id, project_id=str(existing.get("project_id")),
+                       detail=", ".join(k for k in changes if not k.startswith("edited")))
+    return serialize(await db[C.site_updates].find_one({"_id": oid}))
+
+
+@router.delete("/{update_id}", dependencies=[can_delete])
 async def remove(update_id: str, db: Database, user: CurrentUser):
     oid = to_object_id(update_id)
     existing = await db[C.site_updates].find_one({"_id": oid}) if oid else None
     if not existing:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "That site report does not exist.")
     await db[C.site_updates].delete_one({"_id": oid})
+    await log_activity(db, actor=user, action="deleted a site report", entity_type="site_update",
+                       project_id=str(existing.get("project_id")),
+                       detail=existing.get("work_completed", "")[:60])
     return {"ok": True}

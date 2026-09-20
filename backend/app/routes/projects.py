@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.core.deps import CurrentUser, Database, require_roles
+from app.core.deps import CurrentUser, Database, ensure_permission, require_permission
+from app.core.permissions import P
 from app.db.mongodb import Collections as C
 from app.models.common import ProjectStatus, Role, serialize, to_object_id, utcnow
 from app.schemas.project import ProjectCreate, ProjectUpdate
@@ -10,7 +11,11 @@ from app.utils.dates import to_datetime
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
-manager_only = Depends(require_roles(Role.admin, Role.project_manager))
+# Capabilities rather than role names, so moving one is a change to the
+# matrix in app.core.permissions and not to this file.
+can_create = Depends(require_permission(P.projects_create))
+can_edit = Depends(require_permission(P.projects_edit))
+can_delete = Depends(require_permission(P.projects_delete))
 
 
 @router.get("")
@@ -56,7 +61,7 @@ async def detail(project_id: str, db: Database, user: CurrentUser):
     return project
 
 
-@router.post("", status_code=status.HTTP_201_CREATED, dependencies=[manager_only])
+@router.post("", status_code=status.HTTP_201_CREATED, dependencies=[can_create])
 async def create(payload: ProjectCreate, db: Database, user: CurrentUser):
     if await db[C.projects].find_one({"code": payload.code.upper()}):
         raise HTTPException(status.HTTP_409_CONFLICT, f"Project code {payload.code.upper()} is already in use.")
@@ -83,7 +88,7 @@ async def create(payload: ProjectCreate, db: Database, user: CurrentUser):
     return await detail(project_id, db, user)
 
 
-@router.patch("/{project_id}", dependencies=[manager_only])
+@router.patch("/{project_id}", dependencies=[can_edit])
 async def update(project_id: str, payload: ProjectUpdate, db: Database, user: CurrentUser):
     oid = to_object_id(project_id)
     if not oid:
@@ -94,6 +99,11 @@ async def update(project_id: str, payload: ProjectUpdate, db: Database, user: Cu
         if field in changes:
             changes[field] = to_datetime(changes[field])
     if "manager_id" in changes:
+        # Handing a project to a different manager changes who can act on it,
+        # so it is guarded separately from ordinary project edits.
+        existing = await db[C.projects].find_one({"_id": oid}, {"manager_id": 1})
+        if str((existing or {}).get("manager_id")) != str(changes["manager_id"]):
+            ensure_permission(user, P.projects_assign_manager)
         changes["manager_id"] = to_object_id(changes["manager_id"])
     if "team_ids" in changes:
         changes["team_ids"] = [t for t in map(to_object_id, changes["team_ids"]) if t]
@@ -111,7 +121,7 @@ async def update(project_id: str, payload: ProjectUpdate, db: Database, user: Cu
     return await detail(project_id, db, user)
 
 
-@router.delete("/{project_id}", dependencies=[Depends(require_roles(Role.admin))])
+@router.delete("/{project_id}", dependencies=[can_delete])
 async def remove(project_id: str, db: Database, user: CurrentUser):
     oid = to_object_id(project_id)
     project = await db[C.projects].find_one({"_id": oid})

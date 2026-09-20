@@ -173,6 +173,81 @@
     @apply absolute inset-0 -translate-x-full animate-shimmer;
     background: linear-gradient(90deg, transparent, rgb(var(--surface) / 0.65), transparent);
   }
+
+  /* ========================================================================
+     Field surface
+     The site app is used outdoors, on a phone, often one-handed and in a
+     hurry. It is the same palette as the office app but a different physics:
+     bigger targets, heavier weight, higher contrast, and controls placed
+     where a thumb already is rather than where a cursor would go.
+     ======================================================================== */
+
+  /* Nothing tappable on the site app is smaller than this. 52px is a gloved
+     thumb, not a mouse pointer. */
+  .tap {
+    @apply min-h-[52px] select-none;
+    touch-action: manipulation;
+  }
+  .tap-lg {
+    @apply min-h-[64px] select-none;
+    touch-action: manipulation;
+  }
+
+  /* A quick action: a slab you hit, not a button you aim at. */
+  .field-tile {
+    @apply tap-lg relative flex flex-col justify-between gap-2 overflow-hidden rounded-panel
+           border border-line bg-surface p-3.5 text-left
+           transition-[transform,border-color,background-color] duration-150 ease-out;
+  }
+  .field-tile:active {
+    @apply border-line-strong bg-raised;
+    transform: scale(0.97);
+  }
+
+  /* The site header band: signage, not chrome. Ink ground with an amber rule,
+     the way a hoarding carries the site name. */
+  .site-band {
+    @apply relative overflow-hidden bg-ink text-paper;
+  }
+  .site-band::after {
+    content: '';
+    @apply absolute inset-x-0 bottom-0 h-[3px];
+    background: rgb(var(--amber));
+  }
+
+  /* A hi-vis chip, for the one thing on screen that is actually urgent. */
+  .hi-vis {
+    @apply rounded-pill bg-amber px-2.5 py-1 text-micro font-semibold uppercase tracking-[0.06em] text-[#1A1405];
+  }
+
+  /* Numeric entry without a keyboard: a value between two large steppers. */
+  .stepper-btn {
+    @apply flex h-12 w-12 shrink-0 items-center justify-center rounded-control border border-line
+           bg-surface text-ink transition-colors active:bg-raised disabled:opacity-35;
+    touch-action: manipulation;
+  }
+
+  /* A choice made by tapping one of a few, rather than opening a menu. */
+  .chip-choice {
+    @apply tap flex flex-1 items-center justify-center rounded-control border border-line bg-surface
+           px-3 text-base font-medium text-muted transition-colors duration-150;
+  }
+  .chip-choice[aria-pressed='true'] {
+    @apply border-ink bg-ink text-paper;
+  }
+}
+
+@layer utilities {
+  /* Bottom navigation has to clear the home indicator on a phone. */
+  .pb-safe {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);
+  }
+  .mb-safe {
+    margin-bottom: calc(env(safe-area-inset-bottom, 0px));
+  }
+  .h-nav-safe {
+    height: calc(4rem + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 @layer utilities {

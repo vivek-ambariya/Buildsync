@@ -1,36 +1,31 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import gsap from 'gsap'
 import {
-  ArrowRight, FileSearch, Hammer, MessageSquareText, Moon, Package,
-  Radar, Sun, Wallet,
+  ArrowDown, ArrowRight, FileSearch, Hammer, MessageSquareText, Moon,
+  Package, Radar, Sun, Wallet,
 } from 'lucide-react'
 
 import { cn } from '@/lib/cn'
 import { useAuth } from '@/lib/auth'
 import { useLenis } from '@/lib/useLenis'
 import { useTheme } from '@/lib/theme'
-import { useScrollReveal } from '@/animations/useMotion'
 import { prefersReducedMotion } from '@/animations'
 import { Logo } from '@/components/Logo'
 import { Button, ButtonLink } from '@/components/ui/Button'
 import { BuildSequence } from '@/features/landing/BuildSequence'
 import { LoginModal } from '@/features/landing/LoginModal'
-
-const SCATTERED = [
-  { source: 'Excel trackers', detail: 'Three versions, none of them current' },
-  { source: 'WhatsApp groups', detail: 'Today’s pour confirmed in a voice note' },
-  { source: 'Printed BOQs', detail: 'Revision 3 in a drawer at the site office' },
-  { source: 'Vendor invoices', detail: 'Emailed to whoever raised the order' },
-  { source: 'Site diaries', detail: 'Handwritten, collected at month end' },
-  { source: 'Drawing folders', detail: 'Latest revision unclear until someone asks' },
-]
+import { Pipeline } from '@/features/landing/Pipeline'
+import { ProductPreview } from '@/features/landing/ProductPreview'
+import { ScatteredData } from '@/features/landing/ScatteredData'
+import { ScrollRail } from '@/features/landing/ScrollRail'
+import { StatsBand } from '@/features/landing/StatsBand'
+import { gsap, parallax, wipeIn } from '@/features/landing/scroll'
 
 const FEATURES = [
   {
     icon: Radar,
     title: 'Risk detection',
-    body: 'Every project is scored on schedule variance, cost performance and stock cover. Findings are ranked by what they will actually cost you, not by when they were raised.',
+    body: 'Every project scored on schedule variance, cost performance and stock cover. Findings ranked by what they will actually cost you, not by when they were raised.',
   },
   {
     icon: FileSearch,
@@ -45,7 +40,7 @@ const FEATURES = [
   {
     icon: Package,
     title: 'Material management',
-    body: 'Consumption is measured against supplier lead time, so a reorder date arrives before the site runs dry, not after.',
+    body: 'Consumption measured against supplier lead time, so a reorder date arrives before the site runs dry rather than after.',
   },
   {
     icon: Wallet,
@@ -59,46 +54,126 @@ const FEATURES = [
   },
 ]
 
+const CHAPTERS = [
+  { selector: '#hero', label: 'BuildSync AI' },
+  { selector: '#problem', label: 'The problem' },
+  { selector: '#sequence', label: 'A project, built' },
+  { selector: '#pipeline', label: 'How it works' },
+  { selector: '#preview', label: 'The product' },
+  { selector: '#features', label: 'What it does' },
+  { selector: '#enter', label: 'Enter' },
+]
+
+const HEALTH = [
+  { name: 'Riverfront Residency C', actual: 91, planned: 86.7, tone: 'healthy' },
+  { name: 'Green Valley Residences', actual: 71, planned: 59.4, tone: 'healthy' },
+  { name: 'LJ Business Center', actual: 58, planned: 48.1, tone: 'healthy' },
+  { name: 'Metro Commercial Hub', actual: 44, planned: 42.8, tone: 'healthy' },
+  { name: 'Skyline Tower', actual: 40, planned: 56.6, tone: 'critical' },
+  { name: 'Sardar Industrial Park II', actual: 33, planned: 41.3, tone: 'warning' },
+]
+
 export default function Landing() {
   const { status } = useAuth()
   const { theme, toggle } = useTheme()
   const [loginOpen, setLoginOpen] = useState(false)
-  const hero = useRef(null)
-  const reveal = useScrollReveal([])
+  const root = useRef(null)
 
   useLenis(true)
-
-  // One orchestrated entrance, then the page hands motion over to scroll.
-  useLayoutEffect(() => {
-    if (!hero.current || prefersReducedMotion()) return undefined
-    const context = gsap.context(() => {
-      gsap.from('[data-hero]', {
-        opacity: 0,
-        y: 18,
-        duration: 0.7,
-        ease: 'power3.out',
-        stagger: 0.075,
-        delay: 0.1,
-      })
-      gsap.from('[data-hero-panel]', {
-        opacity: 0,
-        y: 26,
-        duration: 0.85,
-        ease: 'power3.out',
-        delay: 0.35,
-      })
-    }, hero)
-    return () => context.revert()
-  }, [])
 
   useEffect(() => {
     document.title = 'BuildSync AI — Construction data, intelligent decisions'
   }, [])
 
+  useLayoutEffect(() => {
+    const scope = root.current
+    if (!scope) return undefined
+
+    const context = gsap.context(() => {
+      // One orchestrated entrance. After this the page hands motion to scroll.
+      if (!prefersReducedMotion()) {
+        const intro = gsap.timeline({ defaults: { ease: 'power3.out' } })
+        intro
+          .from('[data-hero]', { opacity: 0, y: 18, duration: 0.7, stagger: 0.075 }, 0.1)
+          .from('[data-hero-panel]', { opacity: 0, y: 28, duration: 0.85 }, 0.35)
+          .from('[data-hero-row]', { opacity: 0, x: -12, duration: 0.5, stagger: 0.06 }, 0.6)
+      }
+
+      // Hero exit: three depths leaving at three speeds.
+      parallax('[data-hero-copy]', { distance: -70, trigger: '#hero', start: 'top top', end: 'bottom top' })
+      parallax('[data-hero-panel]', { distance: -150, trigger: '#hero', start: 'top top', end: 'bottom top' })
+      parallax('[data-hero-grid]', { distance: 90, trigger: '#hero', start: 'top top', end: 'bottom top' })
+
+      if (!prefersReducedMotion()) {
+        // The scroll cue retires once the visitor has taken the hint.
+        gsap.to('[data-scroll-cue]', {
+          opacity: 0,
+          y: 12,
+          ease: 'none',
+          scrollTrigger: { trigger: '#hero', start: 'top top', end: '18% top', scrub: 0.4 },
+        })
+
+        // Features: the cards rise as the grid is scrolled through, and the
+        // rule draws across the heading.
+        gsap.fromTo(
+          '[data-feature]',
+          { opacity: 0, y: 34 },
+          {
+            opacity: 1,
+            y: 0,
+            ease: 'power2.out',
+            stagger: 0.12,
+            duration: 1,
+            scrollTrigger: { trigger: '#features', start: 'top 78%', end: 'center 60%', scrub: 0.6 },
+          },
+        )
+        gsap.fromTo(
+          '[data-feature-rule]',
+          { scaleX: 0 },
+          {
+            scaleX: 1,
+            transformOrigin: 'left center',
+            ease: 'none',
+            scrollTrigger: { trigger: '#features', start: 'top 85%', end: 'top 45%', scrub: 0.5 },
+          },
+        )
+
+        // Closing statement: the two lines arrive from opposite sides.
+        gsap.fromTo(
+          '[data-cta-line="1"]',
+          { x: -46, opacity: 0 },
+          {
+            x: 0,
+            opacity: 1,
+            ease: 'none',
+            scrollTrigger: { trigger: '#enter', start: 'top 85%', end: 'center 65%', scrub: 0.7 },
+          },
+        )
+        gsap.fromTo(
+          '[data-cta-line="2"]',
+          { x: 46, opacity: 0 },
+          {
+            x: 0,
+            opacity: 1,
+            ease: 'none',
+            scrollTrigger: { trigger: '#enter', start: 'top 85%', end: 'center 65%', scrub: 0.7 },
+          },
+        )
+        parallax('[data-cta-grid]', { distance: 70, trigger: '#enter' })
+      }
+
+      wipeIn(gsap.utils.toArray('[data-wipe]', scope), { trigger: '#features' })
+    }, root)
+
+    return () => context.revert()
+  }, [])
+
   const openLogin = () => setLoginOpen(true)
 
   return (
-    <div ref={reveal} className="bg-paper">
+    <div ref={root} className="bg-paper">
+      <ScrollRail chapters={CHAPTERS} />
+
       {/* Nav */}
       <header className="sticky top-0 z-40 border-b border-line bg-paper/85 backdrop-blur-md">
         <div className="mx-auto flex h-14 w-full max-w-[1400px] items-center gap-4 px-6 lg:px-10">
@@ -106,7 +181,8 @@ export default function Landing() {
           <nav className="ml-6 hidden items-center gap-6 lg:flex">
             {[
               ['The problem', '#problem'],
-              ['How it works', '#sequence'],
+              ['How it works', '#pipeline'],
+              ['The product', '#preview'],
               ['What it does', '#features'],
             ].map(([label, href]) => (
               <a key={href} href={href} className="text-base text-muted transition-colors hover:text-ink">
@@ -139,10 +215,10 @@ export default function Landing() {
       </header>
 
       {/* Hero */}
-      <section ref={hero} className="relative overflow-hidden">
-        <div className="survey-grid absolute inset-0" aria-hidden />
+      <section id="hero" className="relative overflow-hidden">
+        <div data-hero-grid className="survey-grid absolute inset-0" aria-hidden />
         <div className="relative mx-auto grid w-full max-w-[1400px] items-center gap-12 px-6 py-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] lg:px-10 lg:py-24">
-          <div>
+          <div data-hero-copy>
             <p data-hero className="text-tiny font-medium text-amber-deep">
               Construction data management
             </p>
@@ -161,24 +237,17 @@ export default function Landing() {
                 <ArrowRight size={16} />
               </Button>
               <a
-                href="#sequence"
+                href="#problem"
                 className="inline-flex h-11 items-center gap-2 rounded-control border border-line bg-surface px-5 text-body font-medium text-ink transition-colors hover:border-line-strong hover:bg-raised"
               >
                 See how it works
               </a>
             </div>
-            <dl data-hero className="mt-12 grid max-w-lg grid-cols-3 gap-px overflow-hidden rounded-panel border border-line bg-line">
-              {[
-                ['8', 'live projects'],
-                ['₹114 Cr', 'under management'],
-                ['37', 'risk findings open'],
-              ].map(([value, label]) => (
-                <div key={label} className="bg-surface px-4 py-4">
-                  <dt className="font-display text-h3 tabular text-ink">{value}</dt>
-                  <dd className="mt-0.5 text-micro text-subtle">{label}</dd>
-                </div>
-              ))}
-            </dl>
+
+            <div data-scroll-cue className="mt-12 flex items-center gap-2.5 text-tiny text-subtle">
+              <ArrowDown size={13} className="animate-bounce" style={{ animationDuration: '2.2s' }} />
+              Scroll — the page builds as you go
+            </div>
           </div>
 
           {/* A real reading from the product, not a decorative graphic. */}
@@ -194,17 +263,10 @@ export default function Landing() {
               </span>
             </div>
             <ul className="divide-y divide-line">
-              {[
-                { name: 'Riverfront Residency C', actual: 91, planned: 86.7, tone: 'healthy' },
-                { name: 'Green Valley Residences', actual: 71, planned: 59.4, tone: 'healthy' },
-                { name: 'LJ Business Center', actual: 58, planned: 48.1, tone: 'healthy' },
-                { name: 'Metro Commercial Hub', actual: 44, planned: 42.8, tone: 'healthy' },
-                { name: 'Skyline Tower', actual: 40, planned: 56.6, tone: 'critical' },
-                { name: 'Sardar Industrial Park II', actual: 33, planned: 41.3, tone: 'warning' },
-              ].map((row) => {
+              {HEALTH.map((row) => {
                 const variance = row.actual - row.planned
                 return (
-                  <li key={row.name} className="px-5 py-3">
+                  <li key={row.name} data-hero-row className="px-5 py-3">
                     <div className="flex items-baseline justify-between gap-3">
                       <span className="min-w-0 flex-1 truncate text-base text-ink">{row.name}</span>
                       <span className="shrink-0 text-base tabular text-ink">{row.actual}%</span>
@@ -218,11 +280,7 @@ export default function Landing() {
                           )}
                           style={{ width: `${row.actual}%` }}
                         />
-                        <span
-                          className="absolute top-0 h-full w-px bg-ink/45"
-                          style={{ left: `${row.planned}%` }}
-                          aria-hidden
-                        />
+                        <span className="absolute top-0 h-full w-px bg-ink/45" style={{ left: `${row.planned}%` }} aria-hidden />
                       </div>
                       <span
                         className={cn(
@@ -240,7 +298,7 @@ export default function Landing() {
             <div className="flex items-start gap-2.5 border-t border-line bg-critical-wash px-5 py-3">
               <Radar size={14} className="mt-0.5 shrink-0 text-critical" />
               <p className="text-tiny leading-relaxed text-critical">
-                <span className="font-medium">Skyline Tower is 16.6 points behind plan.</span> At the
+                <span className="font-medium">Skyline Tower is 16.7 points behind plan.</span> At the
                 current rate of build, completion lands 308 days past the contract date.
               </p>
             </div>
@@ -248,59 +306,42 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Problem */}
-      <section id="problem" className="border-t border-line bg-surface py-20 lg:py-28">
-        <div className="mx-auto w-full max-w-[1400px] px-6 lg:px-10">
-          <div data-reveal className="max-w-2xl">
-            <p className="text-tiny font-medium text-muted">The problem</p>
-            <h2 className="mt-3 font-display text-h1 leading-[1.08] text-ink">
-              A project generates thousands of numbers a week. Almost none of them end up
-              anywhere you can use.
-            </h2>
-            <p className="mt-5 max-w-xl text-lead text-muted">
-              Construction data is not missing. It is scattered, and by the time anyone
-              collects it into one view, the decision it would have informed has already
-              been made.
-            </p>
-          </div>
+      <ScatteredData />
 
-          <ul data-reveal className="mt-12 grid gap-px overflow-hidden rounded-panel border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
-            {SCATTERED.map((item) => (
-              <li key={item.source} data-reveal-child className="bg-surface px-5 py-6">
-                <p className="font-display text-h4 text-ink">{item.source}</p>
-                <p className="mt-1.5 text-base leading-relaxed text-muted">{item.detail}</p>
-              </li>
-            ))}
-          </ul>
-
-          <div data-reveal className="mt-12 flex flex-col gap-4 rounded-panel border border-line bg-raised p-6 sm:flex-row sm:items-center sm:gap-8">
-            <p className="font-display text-h3 text-ink sm:shrink-0">One platform instead</p>
-            <p className="text-lead text-muted">
-              Every record lands in the same place, keyed to the project it belongs to, and
-              the intelligence is computed from that single source.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* The scroll-scrubbed build */}
       <div id="sequence">
         <BuildSequence />
+      </div>
+
+      <Pipeline />
+
+      <div id="preview">
+        <ProductPreview />
       </div>
 
       {/* Features */}
       <section id="features" className="border-t border-line py-20 lg:py-28">
         <div className="mx-auto w-full max-w-[1400px] px-6 lg:px-10">
-          <div data-reveal className="max-w-2xl">
-            <p className="text-tiny font-medium text-muted">What it does</p>
+          <div className="max-w-2xl">
+            <p className="text-tiny font-medium text-muted" data-wipe>
+              What it does
+            </p>
             <h2 className="mt-3 font-display text-h1 leading-[1.08] text-ink">
-              Six things, each of which earns its place on the sidebar.
+              <span className="block" data-wipe>
+                Six things, each of which
+              </span>
+              <span className="block" data-wipe>
+                earns its place on the sidebar.
+              </span>
             </h2>
           </div>
 
-          <div data-reveal className="mt-12 grid gap-px overflow-hidden rounded-panel border border-line bg-line md:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-8 h-px w-full bg-line">
+            <div data-feature-rule className="h-px origin-left bg-amber" style={{ transform: 'scaleX(0)' }} aria-hidden />
+          </div>
+
+          <div className="mt-10 grid gap-px overflow-hidden rounded-panel border border-line bg-line md:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((feature) => (
-              <article key={feature.title} data-reveal-child className="bg-surface p-6">
+              <article key={feature.title} data-feature className="bg-surface p-6">
                 <feature.icon size={18} className="text-amber-deep" strokeWidth={1.9} />
                 <h3 className="mt-4 font-display text-h4 text-ink">{feature.title}</h3>
                 <p className="mt-2 text-base leading-relaxed text-muted">{feature.body}</p>
@@ -310,34 +351,35 @@ export default function Landing() {
         </div>
       </section>
 
+      <StatsBand />
+
       {/* Final CTA */}
-      <section className="border-t border-line bg-surface">
-        <div className="relative overflow-hidden">
-          <div className="survey-grid absolute inset-0" aria-hidden />
-          <div className="relative mx-auto w-full max-w-[1400px] px-6 py-20 text-center lg:px-10 lg:py-28">
-            <div data-reveal>
-              <h2 className="mx-auto max-w-2xl font-display text-display leading-[0.98] text-ink">
-                Build smarter.
-                <br />
-                Decide faster.
-              </h2>
-              <p className="mx-auto mt-6 max-w-lg text-lead text-muted">
-                Eight live projects are already loaded. Sign in and see the whole portfolio
-                the way a project director would.
-              </p>
-              <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-                <Button variant="primary" size="lg" onClick={openLogin}>
-                  Enter BuildSync
-                  <ArrowRight size={16} />
-                </Button>
-                <Link
-                  to="/login"
-                  className="inline-flex h-11 items-center rounded-control border border-line bg-surface px-5 text-body font-medium text-ink transition-colors hover:border-line-strong hover:bg-raised"
-                >
-                  Open the full sign-in page
-                </Link>
-              </div>
-            </div>
+      <section id="enter" className="relative overflow-hidden border-t border-line bg-surface">
+        <div data-cta-grid className="survey-grid absolute inset-0" aria-hidden />
+        <div className="relative mx-auto w-full max-w-[1400px] px-6 py-20 text-center lg:px-10 lg:py-28">
+          <h2 className="mx-auto max-w-2xl font-display text-display leading-[0.98] text-ink">
+            <span className="block" data-cta-line="1">
+              Build smarter.
+            </span>
+            <span className="block" data-cta-line="2">
+              Decide faster.
+            </span>
+          </h2>
+          <p className="mx-auto mt-6 max-w-lg text-lead text-muted">
+            Eight live projects are already loaded. Sign in and see the whole portfolio
+            the way a project director would.
+          </p>
+          <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+            <Button variant="primary" size="lg" onClick={openLogin}>
+              Enter BuildSync
+              <ArrowRight size={16} />
+            </Button>
+            <Link
+              to="/login"
+              className="inline-flex h-11 items-center rounded-control border border-line bg-surface px-5 text-body font-medium text-ink transition-colors hover:border-line-strong hover:bg-raised"
+            >
+              Open the full sign-in page
+            </Link>
           </div>
         </div>
       </section>

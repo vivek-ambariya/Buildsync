@@ -1,6 +1,12 @@
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.core.deps import CurrentUser, Database
+from app.core.deps import (
+    CurrentUser,
+    Database,
+    forbidden,
+    require_permission,
+)
+from app.core.permissions import P, has_permission
 from app.db.mongodb import Collections as C
 from app.models.common import Role, TaskStatus, serialize, to_object_id, utcnow
 from app.schemas.task import TaskCreate, TaskUpdate
@@ -9,6 +15,13 @@ from app.services.project_service import recalculate_progress, visibility_filter
 from app.utils.dates import to_datetime
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
+
+can_create = Depends(require_permission(P.tasks_create))
+can_delete = Depends(require_permission(P.tasks_delete))
+
+# What someone who may only update their own work is allowed to change:
+# how far along it is, not what it is or who owns it.
+OWN_TASK_FIELDS = frozenset({"progress", "status"})
 
 
 async def _people(db) -> dict[str, dict]:
@@ -58,7 +71,7 @@ async def index(
     return [_decorate(serialize(doc), people, project_names) async for doc in cursor]
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED, dependencies=[can_create])
 async def create(payload: TaskCreate, db: Database, user: CurrentUser):
     project = await db[C.projects].find_one({"_id": to_object_id(payload.project_id)})
     if not project:
@@ -96,6 +109,16 @@ async def update(task_id: str, payload: TaskUpdate, db: Database, user: CurrentU
         raise HTTPException(status.HTTP_404_NOT_FOUND, "That task does not exist.")
 
     changes = {k: v for k, v in payload.model_dump(exclude_unset=True).items() if v is not None}
+
+    # Anyone with tasks.edit may change any visible task. Everyone else may
+    # only move their own work along, and only its progress and status — so a
+    # contractor cannot reassign a task to themselves or push its deadline.
+    if not has_permission(user["role"], P.tasks_edit):
+        if str(existing.get("assignee_id")) != str(user["id"]):
+            raise forbidden()
+        if not set(changes) <= OWN_TASK_FIELDS:
+            raise forbidden()
+
     for field in ("start_date", "deadline"):
         if field in changes:
             changes[field] = to_datetime(changes[field])
@@ -124,7 +147,7 @@ async def update(task_id: str, payload: TaskUpdate, db: Database, user: CurrentU
     return _decorate(updated, people, {project_id: project["name"] if project else ""})
 
 
-@router.delete("/{task_id}")
+@router.delete("/{task_id}", dependencies=[can_delete])
 async def remove(task_id: str, db: Database, user: CurrentUser):
     oid = to_object_id(task_id)
     existing = await db[C.tasks].find_one({"_id": oid}) if oid else None

@@ -38,3 +38,9 @@ class Collections:
     ai_insights = "ai_insights"
     activities = "activities"
     conversations = "conversations"
+    # Site operations: what the people on the ground record during the day.
+    site_photos = "site_photos"
+    site_issues = "site_issues"
+    material_requests = "material_requests"
+    workforce_logs = "workforce_logs"
+    progress_updates = "progress_updates"

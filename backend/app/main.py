@@ -16,6 +16,7 @@ from app.core.config import settings
 from app.db.indexes import ensure_indexes
 from app.db.mongodb import close, connect, get_database
 from app.routes import (
+    admin,
     ai,
     auth,
     dashboard,
@@ -26,6 +27,7 @@ from app.routes import (
     projects,
     reports,
     search,
+    site,
     site_updates,
     tasks,
     users,
@@ -104,6 +106,6 @@ async def health():
             "environment": settings.environment}
 
 
-for module in (auth, users, dashboard, projects, tasks, materials, expenses,
-               documents, site_updates, reports, ai, notifications, search):
+for module in (auth, users, admin, dashboard, projects, tasks, materials, expenses,
+               documents, site_updates, site, reports, ai, notifications, search):
     app.include_router(module.router, prefix=settings.api_prefix)

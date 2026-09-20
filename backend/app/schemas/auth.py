@@ -16,6 +16,7 @@ class UserOut(BaseModel):
     title: str | None = None
     avatar_initials: str | None = None
     phone: str | None = None
+    permissions: list[str] = Field(default_factory=list)
 
 
 class TokenResponse(BaseModel):

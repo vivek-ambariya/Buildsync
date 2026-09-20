@@ -13,7 +13,11 @@ from __future__ import annotations
 import re
 
 from app.ai.engine import material_metrics, project_budget_metrics, project_schedule_metrics
+import logging
+
 from app.ai.llm_provider import get_provider
+
+log = logging.getLogger(__name__)
 from app.utils.formatting import format_date, format_inr
 
 SUGGESTED_PROMPTS = [
@@ -118,6 +122,39 @@ def context_to_prompt(context: dict, question: str) -> str:
 # Deterministic answers
 # --------------------------------------------------------------------------
 
+# Small talk is matched against the WHOLE message, not as a substring: "hi"
+# lives inside "which", "this" and "high", so a loose pattern would swallow
+# real questions.
+_GREETING_RE = re.compile(
+    r"^\s*(hi+|hey+|hello+|helo+|hiya|yo|sup|namaste|namaskar|"
+    r"good\s+(morning|afternoon|evening|day))"
+    r"[\s,.!?]*(buildsync|there|bot|ai|assistant)?[\s,.!?]*$",
+    re.I,
+)
+_THANKS_RE = re.compile(
+    r"^\s*(thanks?|thank\s+you|thx|ty|cheers|nice|great|cool|"
+    r"ok(ay)?|got\s+it|perfect|awesome|good\s+job)[\s,.!?]*$",
+    re.I,
+)
+_IDENTITY_RE = re.compile(
+    r"(\bwho\s+are\s+you\b|\bwhat\s+are\s+you\b|\bwhat\s+can\s+you\s+do\b|"
+    r"\bwhat\s+do\s+you\s+do\b|\bhow\s+can\s+you\s+help\b|\bintroduce\s+yourself\b|"
+    r"\byour\s+name\b|\bare\s+you\s+(a\s+)?(bot|ai|human|real)\b|^\s*help(\s+me)?[\s,.!?]*$)",
+    re.I,
+)
+
+
+def _smalltalk_kind(question: str) -> str | None:
+    """Return 'greeting', 'thanks' or 'identity' when the message is small talk."""
+    if _GREETING_RE.match(question):
+        return "greeting"
+    if _THANKS_RE.match(question):
+        return "thanks"
+    if _IDENTITY_RE.search(question):
+        return "identity"
+    return None
+
+
 _INTENTS: list[tuple[str, str]] = [
     ("delay", r"delay|behind|late|slipp|schedule"),
     ("risk", r"risk|worry|concern|problem|issue|attention"),
@@ -129,6 +166,8 @@ _INTENTS: list[tuple[str, str]] = [
 
 
 def detect_intent(question: str) -> str:
+    if _smalltalk_kind(question):
+        return "smalltalk"
     text = question.lower()
     for intent, pattern in _INTENTS:
         if re.search(pattern, text):
@@ -145,11 +184,55 @@ def _named_project(question: str, context: dict) -> dict | None:
     return None
 
 
+_CAPABILITIES = (
+    "- **Delays** — which sites are slipping, by how long, and why\n"
+    "- **Materials** — what is running low and how many days of cover is left\n"
+    "- **Budget** — spend against plan, CPI, and what is remaining\n"
+    "- **Risks** — what needs attention this week"
+)
+
+
+def _smalltalk_answer(kind: str, context: dict) -> dict:
+    """Greetings get an introduction, not a portfolio dump: no cards, no chart."""
+    projects = context["projects"]
+    short = [m["name"] for m in context["materials"] if m["status"] != "healthy"]
+
+    if kind == "thanks":
+        return _response(
+            f"Happy to help. Ask me anything else about schedule, materials, budget "
+            f"or risk across your {len(projects)} projects."
+        )
+
+    if kind == "identity":
+        lead = (
+            "### BuildSync AI\n\n"
+            "I'm the assistant built into BuildSync — a construction copilot for your "
+            "project portfolio. I read your live project, task, material and expense "
+            "records, so every answer is grounded in what is actually on site rather "
+            "than a general guess.\n\n"
+            "I can help with:\n\n"
+        )
+    else:
+        lead = (
+            "### BuildSync AI\n\n"
+            f"Hello! I'm your construction copilot. Right now I'm tracking "
+            f"**{len(projects)} projects**, **{context['open_task_count']} open tasks** and "
+            + (f"**{len(short)} materials** that need reordering.\n\n"
+               if short else "no material shortfalls.\n\n")
+            + "Ask me about:\n\n"
+        )
+
+    return _response(lead + _CAPABILITIES + "\n\nTry: *\"Which projects are delayed?\"*")
+
+
 def answer_locally(question: str, context: dict) -> dict:
     """Route to a grounded answer without a hosted model."""
     projects = context["projects"]
     intent = detect_intent(question)
     target = _named_project(question, context)
+
+    if intent == "smalltalk":
+        return _smalltalk_answer(_smalltalk_kind(question), context)
 
     if target and intent in ("why", "delay", "summary"):
         s, b = target["schedule"], target["budget"]
@@ -384,6 +467,13 @@ def _response(markdown: str, cards: list[dict] | None = None, chart: dict | None
 async def ask(question: str, context: dict) -> dict:
     """Answer a question, preferring a hosted model for the prose."""
     local = answer_locally(question, context)
+
+    # Small talk is answered deterministically. Routing "hii" through the model
+    # returned a wall of portfolio analytics, and a greeting should not depend
+    # on a network call that can be slow, rate-limited or down.
+    if detect_intent(question) == "smalltalk":
+        return local
+
     provider = get_provider()
     if not provider.available:
         return local
@@ -392,6 +482,9 @@ async def ask(question: str, context: dict) -> dict:
         if prose.strip():
             local["answer"] = prose.strip()
             local["engine"] = provider.name
-    except Exception:
-        pass  # keep the grounded local answer if the model call fails
+    except Exception as exc:
+        # Keep the grounded local answer, but never fail silently: a retired
+        # model, an expired key or a quota block all land here, and without a
+        # log line the assistant just quietly degrades to the local engine.
+        log.warning("Hosted model (%s) failed, using local answer: %s", provider.name, exc)
     return local

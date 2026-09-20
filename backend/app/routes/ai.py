@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.ai.assistant import SUGGESTED_PROMPTS, ask, build_context
 from app.ai.engine import project_schedule_metrics
 from app.ai.llm_provider import get_provider
-from app.core.deps import CurrentUser, Database
+from app.core.deps import CurrentUser, Database, require_permission
+from app.core.permissions import P
 from app.db.mongodb import Collections as C
 from app.models.common import serialize, to_object_id, utcnow
 from app.schemas.misc import AssistantRequest
@@ -12,8 +13,12 @@ from app.services.project_service import list_projects, visibility_filter
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
+can_view = Depends(require_permission(P.ai_view))
+can_run = Depends(require_permission(P.ai_run_analysis))
+can_ask = Depends(require_permission(P.ai_assistant))
 
-@router.get("/insights")
+
+@router.get("/insights", dependencies=[can_view])
 async def insights(db: Database, user: CurrentUser, project_id: str | None = None):
     findings = await read_insights(db, user, project_id)
     grouped: dict[str, list] = {"schedule": [], "budget": [], "material": [], "quality": [], "positive": []}
@@ -30,20 +35,20 @@ async def insights(db: Database, user: CurrentUser, project_id: str | None = Non
     }
 
 
-@router.post("/insights/refresh")
+@router.post("/insights/refresh", dependencies=[can_run])
 async def refresh(db: Database, user: CurrentUser, project_id: str | None = None):
     findings = await generate_insights(db, user, project_id)
     return {"findings": findings, "generated": len(findings)}
 
 
-@router.post("/insights/{insight_id}/acknowledge")
+@router.post("/insights/{insight_id}/acknowledge", dependencies=[can_run])
 async def ack(insight_id: str, db: Database, user: CurrentUser):
     if not await acknowledge(db, insight_id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "That finding is no longer open.")
     return {"ok": True}
 
 
-@router.get("/assistant/suggestions")
+@router.get("/assistant/suggestions", dependencies=[can_ask])
 async def suggestions(db: Database, user: CurrentUser):
     provider = get_provider()
     projects = await list_projects(db, user)
@@ -59,7 +64,7 @@ async def suggestions(db: Database, user: CurrentUser):
     return {"prompts": prompts, "engine": provider.name, "hosted_model": provider.available}
 
 
-@router.post("/assistant")
+@router.post("/assistant", dependencies=[can_ask])
 async def assistant(payload: AssistantRequest, db: Database, user: CurrentUser):
     visible = [p async for p in db[C.projects].find(visibility_filter(user), {"_id": 1})]
     ids = [p["_id"] for p in visible]

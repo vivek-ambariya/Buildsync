@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status
 
-from app.core.deps import CurrentUser, Database
+from app.core.deps import CurrentUser, Database, user_permissions
 from app.core.security import create_access_token, verify_password
 from app.db.mongodb import Collections as C
 from app.models.common import serialize
@@ -10,6 +10,12 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 def _public(user: dict) -> dict:
+    """What the client is told about the signed-in person.
+
+    The permission list is sent so the interface can hide what it should not
+    offer. It is a convenience for the UI, never the check itself: every
+    request is authorised again on the server from the stored role.
+    """
     return {
         "id": user["id"],
         "name": user["name"],
@@ -18,6 +24,7 @@ def _public(user: dict) -> dict:
         "title": user.get("title"),
         "avatar_initials": user.get("avatar_initials"),
         "phone": user.get("phone"),
+        "permissions": user_permissions(user),
     }
 
 

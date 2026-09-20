@@ -89,7 +89,59 @@ class OpenAIProvider(LLMProvider):
         return data["choices"][0]["message"]["content"]
 
 
-_PROVIDERS = {"anthropic": AnthropicProvider, "openai": OpenAIProvider}
+class GeminiProvider(LLMProvider):
+    """Google Gemini via the Generative Language API.
+
+    Auth is an API key in the x-goog-api-key header, not a bearer token --
+    Gemini rejects Authorization: Bearer for API keys. Thinking is disabled
+    because 2.5-flash otherwise spends the output budget on reasoning tokens
+    and can return a candidate with no text part at all.
+    """
+
+    name = "gemini"
+    available = True
+    base_url = "https://generativelanguage.googleapis.com/v1beta/models"
+
+    def __init__(self, api_key: str, model: str):
+        self.api_key = api_key
+        self.model = model
+
+    async def complete(self, system: str, prompt: str, max_tokens: int = 900) -> str:
+        headers = {"x-goog-api-key": self.api_key, "content-type": "application/json"}
+        body = {
+            "system_instruction": {"parts": [{"text": system}]},
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "maxOutputTokens": max_tokens,
+                "temperature": 0.3,
+                "thinkingConfig": {"thinkingBudget": 0},
+            },
+        }
+        url = f"{self.base_url}/{self.model}:generateContent"
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(url, headers=headers, json=body)
+            resp.raise_for_status()
+            data = resp.json()
+
+        candidates = data.get("candidates") or []
+        if not candidates:
+            reason = (data.get("promptFeedback") or {}).get("blockReason", "no candidates returned")
+            raise RuntimeError(f"Gemini returned no answer ({reason}).")
+
+        # Skip any thought parts; keep the visible text.
+        parts = candidates[0].get("content", {}).get("parts") or []
+        text = "".join(p.get("text", "") for p in parts if not p.get("thought"))
+        if not text.strip():
+            finish = candidates[0].get("finishReason", "unknown")
+            raise RuntimeError(f"Gemini returned an empty answer (finishReason={finish}).")
+        return text
+
+
+_PROVIDERS = {
+    "anthropic": AnthropicProvider,
+    "openai": OpenAIProvider,
+    "gemini": GeminiProvider,
+}
 
 
 def get_provider() -> LLMProvider:
