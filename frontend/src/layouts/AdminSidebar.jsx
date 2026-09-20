@@ -7,7 +7,6 @@ import {
 
 import { cn } from '@/lib/cn'
 import { gsap, prefersReducedMotion } from '@/animations'
-import { Logo } from '@/components/Logo'
 import { LogoLink } from '@/components/LogoLink'
 
 /**

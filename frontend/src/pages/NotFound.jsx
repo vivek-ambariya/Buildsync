@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom'
 
 import { Button } from '@/components/ui/Button'
-import { Logo } from '@/components/Logo'
 import { LogoLink } from '@/components/LogoLink'
+import { useAuth } from '@/lib/auth'
 
 export default function NotFound({ standalone = false }) {
+  const { status, home } = useAuth()
+  const signedIn = status === 'authenticated'
   const content = (
     <div className="flex flex-col items-center text-center">
       <p className="font-display text-h1 tabular text-line-strong">404</p>
@@ -15,8 +17,8 @@ export default function NotFound({ standalone = false }) {
       <Button variant="primary" className="mt-6" onClick={() => window.history.back()}>
         Go back
       </Button>
-      <Link to="/app" className="link-quiet mt-4 text-base">
-        Open the dashboard
+      <Link to={signedIn ? home : '/'} className="link-quiet mt-4 text-base">
+        {signedIn ? 'Open the dashboard' : 'Back to the home page'}
       </Link>
     </div>
   )

@@ -8,7 +8,6 @@ import {
 import { cn } from '@/lib/cn'
 import { useAuth } from '@/lib/auth'
 import { gsap, prefersReducedMotion } from '@/animations'
-import { Logo } from '@/components/Logo'
 import { LogoLink } from '@/components/LogoLink'
 
 /**
