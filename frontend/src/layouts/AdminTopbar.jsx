@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Activity, Bell, LogOut, Menu, Moon, Search, Settings, Sun, User } from 'lucide-react'
+import { Activity, Bell, LogOut, Menu, Moon, Search, Settings, Sun } from 'lucide-react'
 
 import { cn } from '@/lib/cn'
 import { api } from '@/lib/api'
@@ -54,7 +54,6 @@ export function AdminTopbar({ onMenu, onSearch }) {
   const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform)
 
   const menuItems = [
-    { to: '/admin/settings', label: 'Profile', icon: User },
     { to: '/admin/settings', label: 'Settings', icon: Settings },
     { to: '/admin/activity', label: 'Activity', icon: Activity },
   ]
@@ -150,7 +149,7 @@ export function AdminTopbar({ onMenu, onSearch }) {
               </div>
               {menuItems.map((item) => (
                 <Link
-                  key={item.to}
+                  key={item.label}
                   to={item.to}
                   onClick={() => setMenuOpen(false)}
                   className="flex items-center gap-2 px-3.5 py-2.5 text-base text-muted transition-colors hover:bg-raised hover:text-ink"
