@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 
 import { api, setUnauthorisedHandler, tokenStore } from './api'
+import { homeForRole, workspaceForRole, workspacesFor } from './workspaces'
 
 const AuthContext = createContext(null)
 
@@ -59,20 +60,14 @@ const PERMISSIONS = {
 /**
  * Where a role's work actually lives.
  *
- * A site manager runs the day from a phone on site, so they land in the field
- * app rather than in the portfolio dashboard. Everyone else starts where the
- * portfolio does. Sign-in, the logo and every "back to the start" path read
- * this rather than hardcoding /app.
+ * Each role has its own workspace at its own address, so "signed in" lands
+ * somewhere different depending on who you are. Nothing hardcodes /app.
  */
-const ROLE_HOME = {
-  site_engineer: '/site',
-  contractor: '/site',
-}
-
-export const homeFor = (role) => ROLE_HOME[role] || '/app'
+export const homeFor = (role) => homeForRole(role)
 
 /** True for the roles whose primary surface is the field app. */
-export const isFieldRole = (role) => Boolean(ROLE_HOME[role])
+export const isFieldRole = (role) =>
+  ['site_engineer', 'contractor'].includes(role)
 
 export const ROLE_LABELS = {
   admin: 'Administrator',
@@ -112,8 +107,22 @@ export function AuthProvider({ children }) {
       })
   }, [])
 
-  const signIn = useCallback(async (email, password) => {
-    const result = await api.auth.login(email, password)
+  const signIn = useCallback(async (email, password, selectedRole) => {
+    const result = await api.auth.login(email, password, selectedRole)
+    tokenStore.set(result.access_token)
+    setUser(result.user)
+    setStatus('authenticated')
+    return result.user
+  }, [])
+
+  /**
+   * Move an open session to another of the account's workspaces.
+   *
+   * The server re-authorises it from the database and issues a fresh token,
+   * so this cannot widen a session — it exchanges one for another.
+   */
+  const switchWorkspace = useCallback(async (selectedRole) => {
+    const result = await api.auth.switchWorkspace(selectedRole)
     tokenStore.set(result.access_token)
     setUser(result.user)
     setStatus('authenticated')
@@ -138,10 +147,16 @@ export function AuthProvider({ children }) {
       permissions: user?.permissions || [],
       isAdmin: user?.role === 'admin',
       roleLabel: ROLE_LABELS[user?.role] || '',
-      home: homeFor(user?.role),
+      home: homeForRole(user?.role),
       isField: isFieldRole(user?.role),
+      switchWorkspace,
+      /** The workspace this session is in. */
+      workspace: workspaceForRole(user?.role),
+      /** Every workspace the account may open — what the switcher offers. */
+      authorizedWorkspaces: workspacesFor(user?.authorized_roles || []),
+      authorizedRoles: user?.authorized_roles || [],
     }),
-    [user, status, signIn, signOut],
+    [user, status, signIn, signOut, switchWorkspace],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

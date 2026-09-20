@@ -40,7 +40,7 @@ export function LoginModal({ open, onClose }) {
     setSubmitting(true)
     try {
       await signIn(email.trim(), password)
-      navigate('/app')
+      navigate(homeFor(signedIn?.role))
     } catch (err) {
       setError(err.message)
       setSubmitting(false)

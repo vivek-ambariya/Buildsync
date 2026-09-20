@@ -158,7 +158,7 @@ function UpdateCard({ update, showProject }) {
                   <>
                     {' on '}
                     <Link
-                      to={`/app/projects/${update.project_id}`}
+                      to={`/project-manager/projects/${update.project_id}`}
                       className="underline decoration-line-strong underline-offset-[3px] transition-colors hover:decoration-ink"
                     >
                       {update.project_name}

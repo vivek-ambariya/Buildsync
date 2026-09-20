@@ -25,7 +25,9 @@ import { WorkforceSheet } from '@/features/site-ops/WorkforceSheet'
  * the count of the day, the actions, then the work itself.
  */
 export default function SiteDashboard() {
-  const { user } = useAuth()
+  // Two workspaces share this page, so its links follow the open one.
+  const { user, workspace } = useAuth()
+  const base = workspace?.base || '/site-manager'
   const { overview, loading, error, reload, project } = useSite()
   const scope = useEnter([loading, Boolean(overview)])
   const [recordingWorkforce, setRecordingWorkforce] = useState(false)
@@ -91,7 +93,7 @@ export default function SiteDashboard() {
               value={summary.issues}
               tone={summary.issues > 0 ? 'critical' : 'healthy'}
               icon={summary.issues > 0 ? AlertTriangle : undefined}
-              to={summary.issues > 0 ? '/site/issues' : undefined}
+              to={summary.issues > 0 ? `${base}/issues` : undefined}
             />
           </div>
         )}
@@ -108,7 +110,7 @@ export default function SiteDashboard() {
         <div className="mb-2.5 flex items-end justify-between gap-3">
           <h2 className="text-tiny font-semibold uppercase tracking-[0.05em] text-muted">Today's work</h2>
           <Link
-            to="/site/tasks"
+            to={`${base}/tasks`}
             className="flex shrink-0 items-center gap-1 text-tiny font-medium text-muted transition-colors hover:text-ink"
           >
             All my tasks
@@ -142,7 +144,7 @@ export default function SiteDashboard() {
             ))}
             {overview.tasks_today.length > 4 && (
               <Link
-                to="/site/tasks"
+                to={`${base}/tasks`}
                 className="tap flex items-center justify-center rounded-panel border border-dashed border-line-strong text-base font-medium text-muted"
               >
                 {overview.tasks_today.length - 4} more today
@@ -200,7 +202,7 @@ export default function SiteDashboard() {
           {overview.materials_low.length > 0 && (
             <AttentionList
               title="Materials running low"
-              to="/site/materials"
+              to={`${base}/materials`}
               icon={Package}
               items={overview.materials_low.map((material) => ({
                 id: material.id,
@@ -217,7 +219,7 @@ export default function SiteDashboard() {
           {overview.open_issues.length > 0 && (
             <AttentionList
               title="Open issues"
-              to="/site/issues"
+              to={`${base}/issues`}
               icon={AlertTriangle}
               items={overview.open_issues.map((issue) => ({
                 id: issue.id,
@@ -233,7 +235,7 @@ export default function SiteDashboard() {
       <div data-enter className="space-y-2.5">
         <AssistantLauncher />
         <Link
-          to="/site/photos"
+          to={`${base}/photos`}
           className="tap flex w-full items-center gap-2.5 rounded-panel border border-line bg-surface px-4 text-base text-muted active:bg-raised"
         >
           <Camera size={17} className="shrink-0 text-subtle" />

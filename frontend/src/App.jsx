@@ -1,11 +1,11 @@
 import { Suspense, lazy } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 import { AdminLayout } from './layouts/AdminLayout'
 import { AppLayout } from './layouts/AppLayout'
 import { SiteLayout } from './layouts/SiteLayout'
 import { Logo } from './components/Logo'
-import { RequireAdmin } from './components/RequireAdmin'
+import { RequireWorkspace } from './components/RequireWorkspace'
 import { useAuth } from './lib/auth'
 
 // Landing and login load eagerly; the application shell is split off so the
@@ -63,17 +63,64 @@ function RouteFallback() {
 }
 
 /**
- * Send a person to the surface their role actually works from.
+ * The old single-workspace paths.
  *
- * A site manager opening /app would land on a portfolio dashboard full of
- * budget figures they cannot act on, so /app redirects them to /site. The
- * reverse is not enforced: a project manager has every reason to open the
- * field app and see what their sites are reporting.
+ * `/app` and `/site` were the addresses before each role got its own
+ * workspace, and they are still in the wild — stored notification links point
+ * at them. Rather than break those, they now forward to whichever workspace
+ * the signed-in person actually holds, keeping the deep path intact.
  */
-function RoleHome({ children }) {
+function LegacyRedirect({ from }) {
   const { status, home } = useAuth()
-  if (status === 'authenticated' && home !== '/app') return <Navigate to={home} replace />
-  return children
+  const location = useLocation()
+  if (status === 'loading') return <RouteFallback />
+  if (status === 'anonymous') {
+    return <Navigate to="/login" replace state={{ from: location }} />
+  }
+  const rest = location.pathname.slice(from.length)
+  return <Navigate to={`${home}${rest}${location.search}`} replace />
+}
+
+/** The portfolio pages, shared by every workspace that uses that shell. */
+function PortfolioRoutes() {
+  return (
+    <>
+      <Route index element={<Dashboard />} />
+      <Route path="projects" element={<Projects />} />
+      <Route path="projects/:projectId" element={<ProjectDetail />} />
+      <Route path="documents" element={<Documents />} />
+      <Route path="site-updates" element={<SiteUpdates />} />
+      <Route path="assistant" element={<Assistant />} />
+      <Route path="insights" element={<Insights />} />
+      <Route path="reports" element={<Reports />} />
+      <Route path="team" element={<Team />} />
+      <Route path="*" element={<NotFound />} />
+    </>
+  )
+}
+
+/**
+ * The field pages. A contractor shares the shell but not the job: the daily
+ * report and the headcount belong to whoever runs the site, so those routes
+ * are only mounted for the site manager.
+ */
+function FieldRoutes({ daily }) {
+  return (
+    <>
+      <Route index element={<SiteDashboard />} />
+      <Route path="tasks" element={<SiteTasks />} />
+      <Route path="progress" element={<ProgressUpdates />} />
+      <Route path="photos" element={<SitePhotos />} />
+      <Route path="materials" element={<SiteMaterials />} />
+      <Route path="issues" element={<SiteIssues />} />
+      <Route path="documents" element={<SiteDocuments />} />
+      <Route path="notifications" element={<SiteNotifications />} />
+      <Route path="profile" element={<SiteProfile />} />
+      {daily && <Route path="today" element={<TodaysWork />} />}
+      {daily && <Route path="reports" element={<DailyReports />} />}
+      <Route path="*" element={<NotFound />} />
+    </>
+  )
 }
 
 export default function App() {
@@ -82,60 +129,50 @@ export default function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
 
-      <Route
-        path="/app"
-        element={
-          <RoleHome>
+      {/* One workspace per role, each at its own address and behind its own
+          guard. The guards are UX: every endpoint below them authorises the
+          request again from the roles stored on the account. */}
+
+      <Route element={<RequireWorkspace slug="project-manager" />}>
+        <Route
+          path="/project-manager"
+          element={
             <Suspense fallback={<RouteFallback />}>
               <AppLayout />
             </Suspense>
-          </RoleHome>
-        }
-      >
-        <Route index element={<Dashboard />} />
-        <Route path="projects" element={<Projects />} />
-        <Route path="projects/:projectId" element={<ProjectDetail />} />
-        <Route path="documents" element={<Documents />} />
-        <Route path="site-updates" element={<SiteUpdates />} />
-        <Route path="assistant" element={<Assistant />} />
-        <Route path="insights" element={<Insights />} />
-        <Route path="reports" element={<Reports />} />
-        <Route path="team" element={<Team />} />
-        <Route path="*" element={<NotFound />} />
+          }
+        >
+          {PortfolioRoutes()}
+        </Route>
       </Route>
 
-      {/* The field app: its own shell, its own navigation, its own bundle. */}
-      <Route
-        path="/site"
-        element={
-          <Suspense fallback={<RouteFallback />}>
-            <SiteLayout />
-          </Suspense>
-        }
-      >
-        <Route index element={<SiteDashboard />} />
-        <Route path="tasks" element={<SiteTasks />} />
-        <Route path="today" element={<TodaysWork />} />
-        <Route path="progress" element={<ProgressUpdates />} />
-        <Route path="photos" element={<SitePhotos />} />
-        <Route path="materials" element={<SiteMaterials />} />
-        <Route path="issues" element={<SiteIssues />} />
-        <Route path="reports" element={<DailyReports />} />
-        <Route path="documents" element={<SiteDocuments />} />
-        <Route path="notifications" element={<SiteNotifications />} />
-        <Route path="profile" element={<SiteProfile />} />
-        <Route path="*" element={<NotFound />} />
+      <Route element={<RequireWorkspace slug="site-manager" />}>
+        <Route
+          path="/site-manager"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <SiteLayout />
+            </Suspense>
+          }
+        >
+          {FieldRoutes({ daily: true })}
+        </Route>
       </Route>
 
-      {/* Everything under /admin sits behind RequireAdmin. That is a
-          courtesy to non-admins — the API refuses them regardless. */}
-      <Route
-        element={
-          <Suspense fallback={<RouteFallback />}>
-            <RequireAdmin />
-          </Suspense>
-        }
-      >
+      <Route element={<RequireWorkspace slug="contractor" />}>
+        <Route
+          path="/contractor"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <SiteLayout />
+            </Suspense>
+          }
+        >
+          {FieldRoutes({ daily: false })}
+        </Route>
+      </Route>
+
+      <Route element={<RequireWorkspace slug="admin" />}>
         <Route
           path="/admin"
           element={
@@ -160,7 +197,11 @@ export default function App() {
         </Route>
       </Route>
 
-      <Route path="/dashboard" element={<Navigate to="/app" replace />} />
+      {/* Addresses that predate per-role workspaces. */}
+      <Route path="/app/*" element={<LegacyRedirect from="/app" />} />
+      <Route path="/site/*" element={<LegacyRedirect from="/site" />} />
+
+      <Route path="/dashboard" element={<LegacyRedirect from="/dashboard" />} />
       <Route
         path="*"
         element={

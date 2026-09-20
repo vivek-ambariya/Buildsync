@@ -1,9 +1,6 @@
 import { useLayoutEffect, useRef } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import {
-  Building2, FileBarChart, FileText, Hammer, LayoutDashboard,
-  MessageSquareText, Radar, Users, X,
-} from 'lucide-react'
+import { X } from 'lucide-react'
 
 import { cn } from '@/lib/cn'
 import { useAuth } from '@/lib/auth'
@@ -11,35 +8,14 @@ import { gsap, prefersReducedMotion } from '@/animations'
 import { LogoLink } from '@/components/LogoLink'
 
 /**
- * Navigation is grouped by what the person is doing, not by data model:
- * the work itself, then the intelligence built on top of it.
+ * Navigation is grouped by what the person is doing, not by data model: the
+ * work itself, then the intelligence built on top of it. The destinations
+ * come from the active workspace, so the same shell serves whichever
+ * workspace is open rather than hardcoding one workspace's paths.
  */
-const SECTIONS = [
-  {
-    label: 'Portfolio',
-    items: [
-      { to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true },
-      { to: '/app/projects', label: 'Projects', icon: Building2 },
-      { to: '/app/site-updates', label: 'Site updates', icon: Hammer },
-      { to: '/app/documents', label: 'Documents', icon: FileText },
-    ],
-  },
-  {
-    label: 'Intelligence',
-    items: [
-      { to: '/app/assistant', label: 'Ask BuildSync', icon: MessageSquareText },
-      { to: '/app/insights', label: 'AI insights', icon: Radar },
-      { to: '/app/reports', label: 'Reports', icon: FileBarChart, permission: 'generateReports' },
-    ],
-  },
-  {
-    label: 'Organisation',
-    items: [{ to: '/app/team', label: 'Team', icon: Users }],
-  },
-]
-
 export function Sidebar({ mobileOpen, onClose }) {
-  const { can, user, roleLabel } = useAuth()
+  const { can, user, roleLabel, workspace } = useAuth()
+  const SECTIONS = workspace ? workspace.nav(workspace.base) : []
   const location = useLocation()
   const listRef = useRef(null)
   const indicatorRef = useRef(null)

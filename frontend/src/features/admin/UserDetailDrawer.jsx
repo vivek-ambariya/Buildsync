@@ -97,7 +97,7 @@ export function UserDetailDrawer({ open, onClose, userId }) {
                 {data.projects.map((project) => (
                   <li key={project.id}>
                     <Link
-                      to={`/app/projects/${project.id}`}
+                      to={`/project-manager/projects/${project.id}`}
                       className="flex items-center gap-3 px-3 py-2.5 transition-colors duration-150 hover:bg-raised"
                     >
                       <span className="min-w-0 flex-1 truncate text-base text-ink">{project.name}</span>

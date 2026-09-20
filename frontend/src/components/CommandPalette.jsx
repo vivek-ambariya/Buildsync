@@ -22,14 +22,14 @@ const TYPE_META = {
 }
 
 const PAGES = [
-  { id: 'p-dashboard', type: 'page', title: 'Dashboard', subtitle: 'Portfolio overview', href: '/app' },
-  { id: 'p-projects', type: 'page', title: 'Projects', subtitle: 'All construction projects', href: '/app/projects' },
-  { id: 'p-documents', type: 'page', title: 'Documents', subtitle: 'BOQs, invoices and drawings', href: '/app/documents' },
-  { id: 'p-site', type: 'page', title: 'Site updates', subtitle: 'Daily progress reports', href: '/app/site-updates' },
-  { id: 'p-assistant', type: 'page', title: 'Ask BuildSync', subtitle: 'Construction copilot', href: '/app/assistant' },
-  { id: 'p-insights', type: 'page', title: 'AI insights', subtitle: 'Risk findings across the portfolio', href: '/app/insights' },
-  { id: 'p-reports', type: 'page', title: 'Reports', subtitle: 'Generate a project report', href: '/app/reports' },
-  { id: 'p-team', type: 'page', title: 'Team', subtitle: 'People and roles', href: '/app/team' },
+  { id: 'p-dashboard', type: 'page', title: 'Dashboard', subtitle: 'Portfolio overview', href: '/project-manager' },
+  { id: 'p-projects', type: 'page', title: 'Projects', subtitle: 'All construction projects', href: '/project-manager/projects' },
+  { id: 'p-documents', type: 'page', title: 'Documents', subtitle: 'BOQs, invoices and drawings', href: '/project-manager/documents' },
+  { id: 'p-site', type: 'page', title: 'Site updates', subtitle: 'Daily progress reports', href: '/project-manager/site-updates' },
+  { id: 'p-assistant', type: 'page', title: 'Ask BuildSync', subtitle: 'Construction copilot', href: '/project-manager/assistant' },
+  { id: 'p-insights', type: 'page', title: 'AI insights', subtitle: 'Risk findings across the portfolio', href: '/project-manager/insights' },
+  { id: 'p-reports', type: 'page', title: 'Reports', subtitle: 'Generate a project report', href: '/project-manager/reports' },
+  { id: 'p-team', type: 'page', title: 'Team', subtitle: 'People and roles', href: '/project-manager/team' },
 ]
 
 export function CommandPalette({ open, onClose }) {

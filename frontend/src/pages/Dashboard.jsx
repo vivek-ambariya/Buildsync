@@ -56,7 +56,7 @@ export default function Dashboard() {
             <RefreshCw size={14} />
             Refresh
           </Button>
-          <ButtonLink to="/app/assistant" variant="primary">
+          <ButtonLink to="/project-manager/assistant" variant="primary">
             <Sparkles size={14} />
             Ask BuildSync
           </ButtonLink>
@@ -140,7 +140,7 @@ export default function Dashboard() {
                 description="Completion against the planned curve"
                 action={
                   <Link
-                    to="/app/projects"
+                    to="/project-manager/projects"
                     className="flex items-center gap-1 text-tiny font-medium text-muted transition-colors hover:text-ink"
                   >
                     All projects
@@ -160,7 +160,7 @@ export default function Dashboard() {
                   {data.project_health.map((row, index) => (
                     <li key={row.id}>
                       <Link
-                        to={`/app/projects/${row.id}`}
+                        to={`/project-manager/projects/${row.id}`}
                         className="block px-5 py-3 transition-colors duration-150 hover:bg-raised"
                       >
                         <div className="flex items-center justify-between gap-3">
@@ -214,7 +214,7 @@ export default function Dashboard() {
               </p>
             </div>
             <Link
-              to="/app/insights"
+              to="/project-manager/insights"
               className="flex shrink-0 items-center gap-1 text-tiny font-medium text-muted transition-colors hover:text-ink"
             >
               All findings
@@ -254,7 +254,7 @@ export default function Dashboard() {
                 title="Recent activity"
                 action={
                   <Link
-                    to="/app/site-updates"
+                    to="/project-manager/site-updates"
                     className="flex items-center gap-1 text-tiny font-medium text-muted transition-colors hover:text-ink"
                   >
                     Site updates

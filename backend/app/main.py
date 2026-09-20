@@ -14,6 +14,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.config import settings
 from app.db.indexes import ensure_indexes
+from app.db.migrations import run_migrations
 from app.db.mongodb import close, connect, get_database
 from app.routes import (
     admin,
@@ -31,6 +32,7 @@ from app.routes import (
     site_updates,
     tasks,
     users,
+    workspace,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -44,6 +46,7 @@ async def lifespan(app: FastAPI):
     try:
         await db.command("ping")
         await ensure_indexes(db)
+        await run_migrations(db)
         log.info("Connected to MongoDB at %s/%s", settings.mongodb_uri, settings.mongodb_db)
     except Exception as exc:
         log.error("MongoDB is unreachable: %s", exc)
@@ -109,3 +112,7 @@ async def health():
 for module in (auth, users, admin, dashboard, projects, tasks, materials, expenses,
                documents, site_updates, site, reports, ai, notifications, search):
     app.include_router(module.router, prefix=settings.api_prefix)
+
+# One guarded entry point per workspace, each behind its own role check.
+for _router in (workspace.pm_router, workspace.site_router, workspace.contractor_router):
+    app.include_router(_router, prefix=settings.api_prefix)

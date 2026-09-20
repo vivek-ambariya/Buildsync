@@ -18,7 +18,7 @@ export function ProjectCard({ project, delay = 0 }) {
 
   return (
     <Panel interactive className={cn('rule-left group', tone.rule)}>
-      <Link to={`/app/projects/${project.id}`} className="block p-5 pl-6">
+      <Link to={`/project-manager/projects/${project.id}`} className="block p-5 pl-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-tiny text-muted">

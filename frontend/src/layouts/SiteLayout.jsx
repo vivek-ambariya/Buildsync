@@ -11,6 +11,7 @@ import { Logo } from '@/components/Logo'
 import { SiteProvider, useSite } from '@/features/site-ops/SiteContext'
 import { Sheet } from '@/features/site-ops/Sheet'
 import { SiteBottomNav, SiteMoreSheet, SiteRail } from './SiteNav'
+import { WorkspaceSwitcher } from '@/features/auth/WorkspaceSwitcher'
 
 /**
  * The field app shell.
@@ -40,7 +41,9 @@ export function SiteLayout() {
 }
 
 function SiteShell() {
-  const { user, roleLabel } = useAuth()
+  const { user, roleLabel, workspace } = useAuth()
+  // The shell is shared by two workspaces, so it never hardcodes one.
+  const base = workspace?.base || '/site-manager'
   const { project } = useSite()
   const [moreOpen, setMoreOpen] = useState(false)
   const location = useLocation()
@@ -145,7 +148,7 @@ function SiteTopbar() {
 
           <button
             type="button"
-            onClick={() => navigate('/site/notifications')}
+            onClick={() => navigate(`${base}/notifications`)}
             aria-label={unread ? `${unread} unread notifications` : 'Notifications'}
             className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-control text-paper/80 transition-colors active:bg-paper/10"
           >
@@ -220,13 +223,19 @@ function SiteTopbar() {
             type="button"
             onClick={() => {
               setAccountOpen(false)
-              navigate('/site/profile')
+              navigate(`${base}/profile`)
             }}
             className="tap flex w-full items-center gap-3 rounded-control border border-line px-3.5 text-base text-ink"
           >
             <User size={18} className="text-muted" />
             Profile
           </button>
+
+          {/* Only rendered for accounts that hold more than one workspace. */}
+          <WorkspaceSwitcher
+            onDone={() => setAccountOpen(false)}
+            className="rounded-control border border-line"
+          />
           <button
             type="button"
             onClick={() => {

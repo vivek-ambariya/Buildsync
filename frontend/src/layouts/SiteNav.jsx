@@ -5,45 +5,37 @@ import {
 } from 'lucide-react'
 
 import { cn } from '@/lib/cn'
+import { useAuth } from '@/lib/auth'
 
 /**
- * Site navigation, in the order a day runs.
- *
- * Not the portfolio's grouping by data model — this is the sequence of a
- * shift: look at the day, check your tasks, do the work, record it, then
- * report what happened. The bottom bar carries the five a thumb reaches for;
- * the rest live one tap away behind "More" rather than being cut.
+ * Field navigation comes from the active workspace: a site manager and a
+ * contractor share this shell but not their days, so they do not share a
+ * nav. The bottom bar carries the items a thumb reaches for; the rest live
+ * one tap away behind "More" rather than being cut.
  */
-export const SITE_NAV = [
-  { to: '/site', label: 'Site dashboard', short: 'Today', icon: LayoutGrid, end: true, primary: true },
-  { to: '/site/tasks', label: 'My tasks', short: 'Tasks', icon: ListChecks, primary: true },
-  { to: '/site/today', label: "Today's work", short: 'Work', icon: Sun },
-  { to: '/site/progress', label: 'Progress updates', short: 'Progress', icon: Gauge, primary: true },
-  { to: '/site/photos', label: 'Site photos', short: 'Photos', icon: Camera, primary: true },
-  { to: '/site/materials', label: 'Materials', short: 'Materials', icon: Package },
-  { to: '/site/issues', label: 'Issues', short: 'Issues', icon: AlertTriangle },
-  { to: '/site/reports', label: 'Daily reports', short: 'Reports', icon: ClipboardList },
-  { to: '/site/documents', label: 'Documents', short: 'Docs', icon: FileText },
-]
-
-const PRIMARY = SITE_NAV.filter((item) => item.primary)
-const SECONDARY = SITE_NAV.filter((item) => !item.primary)
+const navFor = (workspace) => (workspace ? workspace.nav(workspace.base) : [])
+const primaryOf = (nav) => nav.filter((item) => item.primary)
+const secondaryOf = (nav) => nav.filter((item) => !item.primary)
 
 /** The desktop rail. Same destinations, laid out for a pointer. */
 export function SiteRail({ user, roleLabel, projectName }) {
+  const { workspace } = useAuth()
+  const nav = navFor(workspace)
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-[232px] flex-col border-r border-line bg-surface lg:flex">
       <div className="site-band shrink-0 px-4 py-4">
         <div className="flex items-center gap-2">
           <HardHat size={18} className="text-amber" />
-          <span className="font-display text-[0.9375rem] font-semibold tracking-tight">Site operations</span>
+          <span className="font-display text-[0.9375rem] font-semibold tracking-tight">
+            {workspace?.label === 'Contractor' ? 'My work' : 'Site operations'}
+          </span>
         </div>
         <p className="mt-2 truncate text-tiny text-paper/70">{projectName || 'No site assigned'}</p>
       </div>
 
       <nav className="flex-1 overflow-y-auto p-2.5">
         <ul className="space-y-0.5">
-          {SITE_NAV.map((item) => (
+          {nav.map((item) => (
             <li key={item.to}>
               <NavLink
                 to={item.to}
@@ -83,13 +75,15 @@ export function SiteRail({ user, roleLabel, projectName }) {
  * and it never scrolls away.
  */
 export function SiteBottomNav({ onMore, moreOpen }) {
+  const { workspace } = useAuth()
+  const primary = primaryOf(navFor(workspace))
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 backdrop-blur-md lg:hidden"
       aria-label="Site sections"
     >
       <ul className="flex pb-safe">
-        {PRIMARY.map((item) => (
+        {primary.map((item) => (
           <li key={item.to} className="flex-1">
             <NavLink
               to={item.to}
@@ -138,13 +132,15 @@ export function SiteBottomNav({ onMore, moreOpen }) {
 
 /** What "More" opens: the destinations the bottom bar could not hold. */
 export function SiteMoreSheet({ open, onClose }) {
+  const { workspace } = useAuth()
+  const secondary = secondaryOf(navFor(workspace))
   if (!open) return null
   return (
     <>
       <div className="fixed inset-0 z-40 bg-ink/45 backdrop-blur-[2px] lg:hidden" onClick={onClose} aria-hidden />
       <div className="fixed inset-x-0 bottom-16 z-40 mb-safe border-y border-line bg-surface p-3 shadow-overlay lg:hidden">
         <ul className="grid grid-cols-2 gap-2">
-          {SECONDARY.map((item) => (
+          {secondary.map((item) => (
             <li key={item.to}>
               <NavLink
                 to={item.to}

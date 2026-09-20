@@ -1,53 +1,24 @@
 import { useLayoutEffect, useRef } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import {
-  Activity, Boxes, Building2, FileBarChart, FileText, Hammer, LayoutDashboard,
-  ListChecks, Radar, Receipt, Settings, ShieldCheck, Users, X,
-} from 'lucide-react'
+import { LayoutDashboard, ShieldCheck, X } from 'lucide-react'
 
 import { cn } from '@/lib/cn'
 import { gsap, prefersReducedMotion } from '@/animations'
 import { LogoLink } from '@/components/LogoLink'
+import { useAuth } from '@/lib/auth'
+import { WORKSPACES } from '@/lib/workspaces'
 
 /**
  * Admin navigation, grouped the way the work divides: the records the
  * platform holds, the intelligence built on them, then the platform itself.
+ * Defined once, with the other workspaces, in lib/workspaces.
  */
-const SECTIONS = [
-  {
-    label: 'Control centre',
-    items: [{ to: '/admin', label: 'Overview', icon: LayoutDashboard, end: true }],
-  },
-  {
-    label: 'Records',
-    items: [
-      { to: '/admin/projects', label: 'Projects', icon: Building2 },
-      { to: '/admin/users', label: 'Users', icon: Users },
-      { to: '/admin/tasks', label: 'Tasks', icon: ListChecks },
-      { to: '/admin/materials', label: 'Materials', icon: Boxes },
-      { to: '/admin/expenses', label: 'Expenses', icon: Receipt },
-      { to: '/admin/documents', label: 'Documents', icon: FileText },
-      { to: '/admin/site-updates', label: 'Site updates', icon: Hammer },
-    ],
-  },
-  {
-    label: 'Intelligence',
-    items: [
-      { to: '/admin/ai', label: 'AI intelligence', icon: Radar },
-      { to: '/admin/reports', label: 'Reports', icon: FileBarChart },
-    ],
-  },
-  {
-    label: 'System',
-    items: [
-      { to: '/admin/activity', label: 'Activity logs', icon: Activity },
-      { to: '/admin/settings', label: 'Settings', icon: Settings },
-    ],
-  },
-]
-
 export function AdminSidebar({ mobileOpen, onClose }) {
   const location = useLocation()
+  const { authorizedWorkspaces } = useAuth()
+  const SECTIONS = WORKSPACES.admin.nav(WORKSPACES.admin.base)
+  // Only offered when the account actually holds a second workspace.
+  const other = authorizedWorkspaces.find((w) => w.slug !== 'admin')
   const listRef = useRef(null)
   const indicatorRef = useRef(null)
 
@@ -145,15 +116,17 @@ export function AdminSidebar({ mobileOpen, onClose }) {
           ))}
         </nav>
 
-        <div className="shrink-0 border-t border-line px-2.5 py-3">
-          <NavLink
-            to="/app"
-            className="flex items-center gap-2.5 rounded-control px-2.5 py-2 text-base text-muted transition-colors hover:bg-raised hover:text-ink"
-          >
-            <LayoutDashboard size={15} strokeWidth={1.9} />
-            Back to workspace
-          </NavLink>
-        </div>
+        {other && (
+          <div className="shrink-0 border-t border-line px-2.5 py-3">
+            <NavLink
+              to={other.base}
+              className="flex items-center gap-2.5 rounded-control px-2.5 py-2 text-base text-muted transition-colors hover:bg-raised hover:text-ink"
+            >
+              <LayoutDashboard size={15} strokeWidth={1.9} />
+              {other.label} workspace
+            </NavLink>
+          </div>
+        )}
       </aside>
     </>
   )

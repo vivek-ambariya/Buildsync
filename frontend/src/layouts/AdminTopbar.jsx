@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth'
 import { useTheme } from '@/lib/theme'
 import { Avatar } from '@/components/ui/Avatar'
 import { NotificationPanel } from '@/components/NotificationPanel'
+import { WorkspaceSwitcher } from '@/features/auth/WorkspaceSwitcher'
 
 /**
  * The control centre's top bar.
@@ -53,7 +54,7 @@ export function AdminTopbar({ onMenu, onSearch }) {
   const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform)
 
   const menuItems = [
-    { to: '/app', label: 'Profile', icon: User },
+    { to: '/admin/settings', label: 'Profile', icon: User },
     { to: '/admin/settings', label: 'Settings', icon: Settings },
     { to: '/admin/activity', label: 'Activity', icon: Activity },
   ]
@@ -158,6 +159,7 @@ export function AdminTopbar({ onMenu, onSearch }) {
                   {item.label}
                 </Link>
               ))}
+              <WorkspaceSwitcher onDone={() => setMenuOpen(false)} />
               <button
                 type="button"
                 onClick={() => {

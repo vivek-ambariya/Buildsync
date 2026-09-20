@@ -14,7 +14,10 @@ from app.models.common import Role
 class UserCreate(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     email: EmailStr
+    # `role` is the primary workspace; `roles` is every workspace the account
+    # may sign in as. Leaving `roles` out means "just the primary one".
     role: Role
+    roles: list[Role] | None = None
     title: str | None = Field(default=None, max_length=120)
     phone: str | None = Field(default=None, max_length=32)
     active: bool = True
@@ -42,6 +45,7 @@ class UserUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=120)
     email: EmailStr | None = None
     role: Role | None = None
+    roles: list[Role] | None = None
     title: str | None = Field(default=None, max_length=120)
     phone: str | None = Field(default=None, max_length=32)
     active: bool | None = None
@@ -60,6 +64,7 @@ class UserUpdate(BaseModel):
 
 class RoleChange(BaseModel):
     role: Role
+    roles: list[Role] | None = None
     reason: str | None = Field(default=None, max_length=280)
 
 
@@ -86,6 +91,7 @@ class AdminUserOut(BaseModel):
     title: str | None = None
     phone: str | None = None
     active: bool = True
+    roles: list[Role] = Field(default_factory=list)
     avatar_initials: str | None = None
     created_at: datetime | None = None
     last_active_at: datetime | None = None

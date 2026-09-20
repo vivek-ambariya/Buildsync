@@ -14,6 +14,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.permissions import has_all, has_any, permissions_for
+from app.core.workspaces import authorized_roles, label_for
 from app.core.security import decode_access_token
 from app.db.mongodb import Collections as C
 from app.db.mongodb import get_database
@@ -50,11 +51,38 @@ async def get_current_user(
     if not user or not user.get("active", True):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "This account is no longer active.")
 
-    # The role is taken from the stored record, not from the token, so a role
-    # change or a deactivation takes effect on the very next request rather
-    # than whenever the token happens to expire.
+    # Which workspace this session is using, checked against the roles stored
+    # on the account. The token says what was chosen; the database decides
+    # whether it is allowed. A role revoked a minute ago is refused now, not
+    # whenever the token happens to expire.
+    allowed = authorized_roles(user)
+    if not allowed:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED,
+                            "This account has no workspace assigned. Ask an administrator.")
+
+    # A session is tied to the workspace it was opened for. If that workspace
+    # is no longer among the account's roles — the claim was edited, or an
+    # admin changed the roles since — the *session* is what has become
+    # invalid, so this is a 401 and not a 403. The client already knows how to
+    # recover from a 401: sign in again and choose a workspace. A 403 here
+    # would strand the person in a session that can no longer do anything,
+    # including switch to a workspace they legitimately hold.
+    workspace = payload.get("ws") or payload.get("role")
+    if workspace not in allowed:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            "Your session is no longer valid for that workspace. Please sign in again.",
+        )
+
     await _touch_presence(db, user)
-    return serialize(user)
+
+    signed_in = serialize(user)
+    # `role` is the *active* workspace for the rest of this request. Every
+    # permission check downstream reads it, so one validated value here is
+    # what the whole authorisation layer runs on.
+    signed_in["role"] = workspace
+    signed_in["authorized_roles"] = allowed
+    return signed_in
 
 
 async def _touch_presence(db: AsyncIOMotorDatabase, user: dict) -> None:

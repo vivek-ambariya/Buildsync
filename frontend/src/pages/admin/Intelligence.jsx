@@ -225,7 +225,7 @@ export default function AdminIntelligence() {
             </p>
           </div>
           <Link
-            to="/app/insights"
+            to="/project-manager/insights"
             className="text-tiny font-medium text-muted transition-colors hover:text-ink"
           >
             Open the findings board
@@ -277,7 +277,7 @@ function RiskCard({ row }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <Link
-            to={`/app/projects/${row.id}`}
+            to={`/project-manager/projects/${row.id}`}
             className="block truncate font-display text-h4 text-ink transition-colors hover:text-amber-deep"
           >
             {row.name}

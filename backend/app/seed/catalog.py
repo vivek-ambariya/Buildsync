@@ -8,9 +8,13 @@ budget scale, phase sequence and supplier names all follow site practice.
 PASSWORD = "buildsync"
 
 PEOPLE = [
+    # Two genuinely multi-role accounts, so the workspace chooser and the
+    # workspace switcher can be exercised without inventing data.
     {"name": "Vivek Ambariya", "email": "vivek@buildsync.ai", "role": "admin",
+     "roles": ["admin", "project_manager"],
      "title": "Director of Projects", "phone": "+91 98250 41207"},
     {"name": "Meera Shah", "email": "meera.shah@buildsync.ai", "role": "project_manager",
+     "roles": ["project_manager", "site_engineer"],
      "title": "Senior Project Manager", "phone": "+91 98795 22014"},
     {"name": "Rajesh Patel", "email": "rajesh.patel@buildsync.ai", "role": "project_manager",
      "title": "Project Manager, Commercial", "phone": "+91 99042 88361"},

@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth'
 import { useTheme } from '@/lib/theme'
 import { Avatar } from '@/components/ui/Avatar'
 import { NotificationPanel } from '@/components/NotificationPanel'
+import { WorkspaceSwitcher } from '@/features/auth/WorkspaceSwitcher'
 
 export function Topbar({ onMenu, onSearch }) {
   const { user, signOut, roleLabel } = useAuth()
@@ -133,12 +134,13 @@ export function Topbar({ onMenu, onSearch }) {
                 <p className="truncate text-tiny text-muted">{user?.email}</p>
               </div>
               <Link
-                to="/app/team"
+                to="/project-manager/team"
                 onClick={() => setMenuOpen(false)}
                 className="block px-3.5 py-2.5 text-base text-muted transition-colors hover:bg-raised hover:text-ink"
               >
                 Team directory
               </Link>
+              <WorkspaceSwitcher onDone={() => setMenuOpen(false)} />
               <button
                 type="button"
                 onClick={() => {

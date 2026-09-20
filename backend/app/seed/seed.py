@@ -56,6 +56,9 @@ async def seed_users(db) -> dict[str, dict]:
             "email": person["email"].lower(),
             "password_hash": hash_password(PASSWORD),
             "avatar_initials": initials(person["name"]),
+            # `role` is the primary workspace; `roles` is every workspace this
+            # account may sign in as. Most people have one of each.
+            "roles": person.get("roles") or [person["role"]],
             "active": True,
             "demo": True,
             "created_at": utcnow(),

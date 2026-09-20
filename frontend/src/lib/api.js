@@ -78,9 +78,30 @@ const remove = (url) => client.delete(url).then((r) => r.data)
 
 export const api = {
   auth: {
-    login: (email, password) => post('/auth/login', { email, password }),
+    // `selected_role` is the workspace the person chose on the way in. The
+    // server treats it as a request and checks it against their account.
+    login: (email, password, selectedRole) =>
+      post('/auth/login', { email, password, selected_role: selectedRole || null }),
     me: () => get('/auth/me'),
+    workspaces: () => get('/auth/workspaces'),
+    switchWorkspace: (selectedRole) =>
+      post('/auth/switch-workspace', { selected_role: selectedRole }),
     demoAccounts: () => get('/auth/demo-accounts'),
+  },
+  // One guarded entry point per workspace. Each is refused to every other role.
+  workspace: {
+    projectManager: {
+      overview: () => get('/project-manager/overview'),
+      projects: () => get('/project-manager/projects'),
+    },
+    siteManager: {
+      overview: () => get('/site-manager/overview'),
+      tasks: () => get('/site-manager/tasks'),
+    },
+    contractor: {
+      overview: () => get('/contractor/overview'),
+      tasks: () => get('/contractor/tasks'),
+    },
   },
   users: {
     list: (role) => get('/users', role ? { role } : undefined),

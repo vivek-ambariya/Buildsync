@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowDown, ArrowRight, FileSearch, Hammer, MessageSquareText, Moon,
   Package, Radar, Sun, Wallet,
@@ -13,7 +13,6 @@ import { prefersReducedMotion } from '@/animations'
 import { LogoLink } from '@/components/LogoLink'
 import { Button, ButtonLink } from '@/components/ui/Button'
 import { BuildSequence } from '@/features/landing/BuildSequence'
-import { LoginModal } from '@/features/landing/LoginModal'
 import { Pipeline } from '@/features/landing/Pipeline'
 import { ProductPreview } from '@/features/landing/ProductPreview'
 import { ScatteredData } from '@/features/landing/ScatteredData'
@@ -67,9 +66,9 @@ const CHAPTERS = [
 
 
 export default function Landing() {
-  const { status } = useAuth()
+  const { status, home } = useAuth()
+  const navigate = useNavigate()
   const { theme, toggle } = useTheme()
-  const [loginOpen, setLoginOpen] = useState(false)
   const root = useRef(null)
 
   useLenis(true)
@@ -161,7 +160,9 @@ export default function Landing() {
     return () => context.revert()
   }, [])
 
-  const openLogin = () => setLoginOpen(true)
+  // Signing in starts with choosing a workspace, so every call to action
+  // here leads to that screen rather than straight to a password field.
+  const openLogin = () => navigate('/login')
 
   return (
     <div ref={root} className="bg-paper">
@@ -193,7 +194,7 @@ export default function Landing() {
               {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
             </button>
             {status === 'authenticated' ? (
-              <ButtonLink to="/app" variant="primary">
+              <ButtonLink to={home} variant="primary">
                 Open dashboard
                 <ArrowRight size={15} />
               </ButtonLink>
@@ -338,7 +339,6 @@ export default function Landing() {
         </div>
       </footer>
 
-      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
     </div>
   )
 }

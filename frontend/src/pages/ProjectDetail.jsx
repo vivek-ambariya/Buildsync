@@ -84,7 +84,7 @@ export default function ProjectDetail() {
     try {
       await api.projects.remove(projectId)
       toast.success('Project deleted', project.name)
-      navigate('/app/projects')
+      navigate('/project-manager/projects')
     } catch (err) {
       toast.error('Could not delete that project', err.message)
       setRemoving(false)
@@ -125,14 +125,14 @@ export default function ProjectDetail() {
   return (
     <div ref={scope}>
       <PageHeader
-        backTo="/app/projects"
+        backTo="/project-manager/projects"
         backLabel="Projects"
         eyebrow={`${project.code} · ${project.category} · ${project.location}`}
         title={project.name}
         description={project.description}
         actions={
           <>
-            <ButtonLink to="/app/assistant" variant="secondary">
+            <ButtonLink to="/project-manager/assistant" variant="secondary">
               <Sparkles size={14} />
               Ask about this project
             </ButtonLink>

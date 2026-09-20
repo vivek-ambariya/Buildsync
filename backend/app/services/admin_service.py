@@ -18,6 +18,7 @@ from app.ai import delay_model
 from app.ai.engine import project_budget_metrics, project_schedule_metrics
 from app.core.config import settings
 from app.db.mongodb import Collections as C
+from app.core.workspaces import authorized_roles
 from app.models.common import Role, serialize, to_object_id, utcnow
 from app.services.project_service import _attach_people, _people_map
 
@@ -387,6 +388,7 @@ def public_user(doc: dict, *, projects: list[dict] | None = None,
         "name": doc.get("name"),
         "email": doc.get("email"),
         "role": doc.get("role"),
+        "roles": authorized_roles(doc),
         "title": doc.get("title"),
         "phone": doc.get("phone"),
         "active": bool(doc.get("active", True)),
@@ -485,7 +487,10 @@ async def user_detail(db: AsyncIOMotorDatabase, user_id: str) -> dict | None:
 
 async def count_admins(db: AsyncIOMotorDatabase, *, exclude: str | None = None) -> int:
     """How many active admins would remain, optionally ignoring one account."""
-    query: dict = {"role": Role.admin.value, "active": True}
+    query: dict = {
+        "active": True,
+        "$or": [{"role": Role.admin.value}, {"roles": Role.admin.value}],
+    }
     if exclude and (oid := to_object_id(exclude)):
         query["_id"] = {"$ne": oid}
     return await db[C.users].count_documents(query)

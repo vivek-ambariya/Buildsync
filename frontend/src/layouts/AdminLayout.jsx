@@ -6,7 +6,7 @@ import { AdminSidebar } from './AdminSidebar'
 import { AdminTopbar } from './AdminTopbar'
 
 /**
- * The admin shell. Access is settled by `RequireAdmin` above this in the
+ * The admin shell. Access is settled by `RequireWorkspace` above this in the
  * route tree, so this component is only ever mounted for an admin and does
  * not check again.
  */

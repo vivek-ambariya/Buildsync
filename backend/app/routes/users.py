@@ -19,6 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from app.core.deps import CurrentUser, Database, require_admin, require_permission
 from app.core.permissions import P
 from app.core.security import hash_password
+from app.core.workspaces import authorized_roles
 from app.db.mongodb import Collections as C
 from app.models.common import Role, serialize, to_object_id, utcnow
 from app.schemas.user import (
@@ -38,8 +39,8 @@ admin_only = Depends(require_admin)
 
 # Fields safe to hand to any signed-in person for assignment pickers.
 DIRECTORY_FIELDS = {
-    "name": 1, "email": 1, "role": 1, "title": 1, "avatar_initials": 1,
-    "phone": 1, "active": 1,
+    "name": 1, "email": 1, "role": 1, "roles": 1, "title": 1,
+    "avatar_initials": 1, "phone": 1, "active": 1,
 }
 
 
@@ -60,7 +61,7 @@ async def _require_user(db, user_id: str) -> dict:
 
 async def _guard_last_admin(db, target: dict, *, action: str) -> None:
     """Refuse a change that would remove the platform's only way in."""
-    if target.get("role") != Role.admin.value or not target.get("active", True):
+    if Role.admin.value not in authorized_roles(target) or not target.get("active", True):
         return
     if await count_admins(db, exclude=str(target["_id"])) == 0:
         raise HTTPException(
@@ -183,10 +184,17 @@ async def create(payload: UserCreate, db: Database, user: CurrentUser):
     # When no password is supplied the account still gets a real one; it is
     # returned to the admin exactly once and only the hash is stored.
     issued = payload.password or secrets.token_urlsafe(9)
+    # The primary workspace is always among the authorised ones, whatever the
+    # caller sent, so an account can never be created that cannot sign in.
+    roles = [r.value for r in (payload.roles or [])] or [payload.role.value]
+    if payload.role.value not in roles:
+        roles.insert(0, payload.role.value)
+
     doc = {
         "name": payload.name,
         "email": email,
         "role": payload.role.value,
+        "roles": roles,
         "title": payload.title,
         "phone": payload.phone,
         "active": payload.active,
@@ -233,11 +241,27 @@ async def update(user_id: str, payload: UserUpdate, db: Database, user: CurrentU
             raise HTTPException(status.HTTP_409_CONFLICT, f"{email} already has an account.")
         changes["email"] = email
 
+    if "roles" in changes and changes["roles"] is not None:
+        changes["roles"] = [r.value if hasattr(r, "value") else r for r in changes["roles"]]
+
     if "role" in changes and changes["role"] is not None:
         role = changes["role"]
         changes["role"] = role.value if hasattr(role, "value") else role
         if changes["role"] != Role.admin.value:
             _guard_not_self(user, target, action="change the role of")
+            await _guard_last_admin(db, target, action="demoted")
+
+    # Whichever of the two arrived, they have to end up agreeing: the primary
+    # workspace must be one the account is authorised for.
+    if changes.get("role") or changes.get("roles"):
+        primary = changes.get("role") or target.get("role")
+        roles = changes.get("roles") or authorized_roles(target)
+        if primary not in roles:
+            roles = [primary, *roles]
+        changes["roles"] = roles
+        changes["role"] = primary
+        if Role.admin.value not in roles and Role.admin.value in authorized_roles(target):
+            _guard_not_self(user, target, action="remove admin access from")
             await _guard_last_admin(db, target, action="demoted")
 
     if changes.get("active") is False:
@@ -274,8 +298,16 @@ async def change_role(user_id: str, payload: RoleChange, db: Database, user: Cur
         _guard_not_self(user, target, action="change the role of")
         await _guard_last_admin(db, target, action="demoted")
 
+    roles = [r.value for r in (payload.roles or [])] or [payload.role.value]
+    if payload.role.value not in roles:
+        roles.insert(0, payload.role.value)
+    if Role.admin.value not in roles and Role.admin.value in authorized_roles(target):
+        _guard_not_self(user, target, action="remove admin access from")
+        await _guard_last_admin(db, target, action="demoted")
+
     await db[C.users].update_one(
-        {"_id": target["_id"]}, {"$set": {"role": payload.role.value, "updated_at": utcnow()}}
+        {"_id": target["_id"]},
+        {"$set": {"role": payload.role.value, "roles": roles, "updated_at": utcnow()}},
     )
     await log_activity(
         db, actor=user, action="changed user role", entity_type="user", entity_id=user_id,

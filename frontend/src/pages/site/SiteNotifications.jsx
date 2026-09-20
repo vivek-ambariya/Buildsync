@@ -5,6 +5,7 @@ import { Bell, Check } from 'lucide-react'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/cn'
 import { useAsync } from '@/lib/useAsync'
+import { useAuth } from '@/lib/auth'
 import { relativeTime } from '@/lib/format'
 import { useEnter } from '@/animations/useMotion'
 import { Button } from '@/components/ui/Button'
@@ -26,6 +27,7 @@ const TONE_RULE = {
 }
 
 export default function SiteNotifications() {
+  const { workspace } = useAuth()
   const { data, error, loading, reload } = useAsync(() => api.notifications.list(), [])
   const [marking, setMarking] = useState(false)
   const scope = useEnter([loading, Boolean(data)])
@@ -109,7 +111,7 @@ export default function SiteNotifications() {
                 {/* A notification about a site thing goes to the site app, not
                     the portfolio route the API wrote for a manager. */}
                 {item.project_id ? (
-                  <Link to="/site" className={cn(className, 'transition-colors active:bg-raised')}>
+                  <Link to={workspace?.base || "/site-manager"} className={cn(className, 'transition-colors active:bg-raised')}>
                     {inner}
                   </Link>
                 ) : (

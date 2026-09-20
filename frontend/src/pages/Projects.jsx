@@ -304,7 +304,7 @@ export default function Projects() {
           <DataTable
             columns={columns}
             rows={filtered}
-            onRowClick={(row) => navigate(`/app/projects/${row.id}`)}
+            onRowClick={(row) => navigate(`/project-manager/projects/${row.id}`)}
           />
         </Panel>
       )}

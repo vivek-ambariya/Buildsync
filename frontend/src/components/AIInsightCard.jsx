@@ -55,7 +55,7 @@ export function AIInsightCard({ insight, onAcknowledged, compact = false }) {
             <div className="flex items-center gap-2">
               <Icon size={13} className={cn('shrink-0', severity.rule)} strokeWidth={2} />
               <Link
-                to={`/app/projects/${insight.project_id}`}
+                to={`/project-manager/projects/${insight.project_id}`}
                 className="truncate text-tiny font-medium text-muted transition-colors hover:text-ink"
               >
                 {insight.project_name}
