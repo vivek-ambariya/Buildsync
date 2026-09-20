@@ -1,0 +1,248 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   Design tokens
+   Colours are stored as raw RGB channels so Tailwind can apply opacity.
+   The palette is a concrete-and-signage one: olive-cast near-black, cool
+   off-white, and amber used only where it carries meaning.
+   ========================================================================== */
+:root,
+:root[data-theme='light'] {
+  --ink: 18 19 15;
+  --paper: 247 247 245;
+  --surface: 255 255 255;
+  --raised: 252 252 251;
+  --line: 226 226 221;
+  --line-strong: 201 202 196;
+  --muted: 110 113 106;
+  --subtle: 145 148 140;
+
+  --amber: 229 165 10;
+  --amber-deep: 163 113 4;
+  --amber-wash: 253 245 223;
+
+  --healthy: 47 125 79;
+  --healthy-wash: 232 243 236;
+  --warning: 176 121 6;
+  --warning-wash: 253 244 225;
+  --critical: 179 57 42;
+  --critical-wash: 250 236 233;
+  --info: 51 105 162;
+  --info-wash: 233 240 248;
+
+  --shadow: 18 19 15;
+  --grid-line: 18 19 15;
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --ink: 240 240 235;
+  --paper: 16 17 14;
+  --surface: 25 26 22;
+  --raised: 33 35 29;
+  --line: 45 47 40;
+  --line-strong: 65 68 58;
+  --muted: 151 154 144;
+  --subtle: 117 120 111;
+
+  --amber: 233 176 43;
+  --amber-deep: 245 202 98;
+  --amber-wash: 48 39 14;
+
+  --healthy: 98 183 133;
+  --healthy-wash: 23 44 32;
+  --warning: 226 172 56;
+  --warning-wash: 49 38 12;
+  --critical: 226 116 98;
+  --critical-wash: 53 28 24;
+  --info: 127 172 226;
+  --info-wash: 22 35 51;
+
+  --shadow: 0 0 0;
+  --grid-line: 240 240 235;
+  color-scheme: dark;
+}
+
+@layer base {
+  * {
+    @apply border-line;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-paper text-ink font-sans text-base antialiased;
+    font-feature-settings: 'cv05' 1, 'ss03' 1;
+  }
+
+  /* Figures must line up in columns wherever they appear. */
+  .tabular,
+  table,
+  [data-metric] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-display font-semibold text-ink;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-amber/70 ring-offset-2 ring-offset-paper;
+  }
+
+  ::selection {
+    background: rgb(var(--amber) / 0.28);
+  }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--line-strong) / 0.75);
+    border: 3px solid rgb(var(--paper));
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: rgb(var(--muted) / 0.65); }
+}
+
+@layer components {
+  /* A panel, not a card: flat, hairline-bordered, no resting shadow.
+     Elevation is reserved for things that actually float. */
+  .panel {
+    @apply rounded-panel border border-line bg-surface;
+  }
+
+  .panel-interactive {
+    @apply panel transition-[border-color,transform,box-shadow] duration-200 ease-out;
+  }
+  .panel-interactive:hover {
+    @apply border-line-strong shadow-lift;
+    transform: translateY(-1px);
+  }
+
+  .panel-header {
+    @apply flex items-center justify-between gap-4 border-b border-line px-5 py-3.5;
+  }
+
+  .panel-title {
+    @apply font-display text-[0.8125rem] font-semibold tracking-[0.02em] text-ink;
+  }
+
+  /* Measurement rule: a 3px status marking on a panel edge, the way a level
+     line is chalked onto a wall. */
+  .rule-left {
+    @apply relative overflow-hidden;
+  }
+  .rule-left::before {
+    content: '';
+    @apply absolute left-0 top-0 h-full w-[3px];
+    background: currentColor;
+  }
+
+  .field-label {
+    @apply block text-tiny font-medium text-muted;
+  }
+
+  .input {
+    @apply w-full rounded-control border border-line bg-surface px-3 py-2 text-base text-ink
+           placeholder:text-subtle transition-colors duration-150
+           focus:border-line-strong focus:outline-none focus:ring-2 focus:ring-amber/45;
+  }
+
+  .link-quiet {
+    @apply text-muted underline decoration-line-strong underline-offset-[3px]
+           transition-colors hover:text-ink hover:decoration-ink;
+  }
+
+  /* Survey-paper reference grid. Used sparingly, as a ground plane. */
+  .survey-grid {
+    background-image:
+      linear-gradient(to right, rgb(var(--grid-line) / 0.055) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(var(--grid-line) / 0.055) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+
+  .skeleton {
+    @apply relative overflow-hidden rounded bg-line/70;
+  }
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0 -translate-x-full animate-shimmer;
+    background: linear-gradient(90deg, transparent, rgb(var(--surface) / 0.65), transparent);
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; }
+
+  /* Elements the page-entrance timeline will animate in. */
+  [data-enter] { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  [data-enter] { opacity: 1 !important; transform: none !important; }
+}
+
+/* ==========================================================================
+   Print
+   A report offers a Print button, so the printed page has to be the report
+   and nothing else: no navigation, no controls, no dark theme burning ink.
+   ========================================================================== */
+@media print {
+  :root,
+  :root[data-theme='dark'] {
+    --ink: 18 19 15;
+    --paper: 255 255 255;
+    --surface: 255 255 255;
+    --raised: 255 255 255;
+    --line: 214 214 209;
+    --line-strong: 170 172 165;
+    --muted: 82 85 78;
+    --subtle: 110 113 106;
+    color-scheme: light;
+  }
+
+  aside,
+  header.sticky,
+  .print\:hidden,
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  main,
+  body > div > div {
+    padding: 0 !important;
+  }
+
+  /* Collapse the app shell offset so the report starts at the page edge. */
+  .lg\:pl-\[244px\] {
+    padding-left: 0 !important;
+  }
+
+  .panel,
+  .panel-interactive {
+    border-color: rgb(var(--line)) !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+
+  section {
+    break-inside: avoid;
+  }
+
+  a[href]::after {
+    content: '';
+  }
+}

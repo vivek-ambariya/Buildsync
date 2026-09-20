@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Env
+.env
+.env.local
+*.local
+
+# Uploads & artifacts
+backend/storage/
+frontend/dist/
+
+# Trained model binaries and generated figures
+ml/models/*.joblib
+ml/reports/*.png
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/

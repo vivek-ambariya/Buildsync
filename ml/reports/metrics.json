@@ -1,0 +1,124 @@
+{
+  "dataset": {
+    "rows": 10000,
+    "features": 10,
+    "delay_rate": 0.3035
+  },
+  "split": {
+    "strategy": "stratified hold-out",
+    "test_size": 0.2,
+    "random_state": 42,
+    "train_rows": 8000,
+    "test_rows": 2000,
+    "cv_folds": 5
+  },
+  "cv_comparison": {
+    "logistic_regression": {
+      "roc_auc": 0.8857559301567854,
+      "roc_auc_std": 0.0102019401635274,
+      "f1": 0.6992786293958522,
+      "accuracy": 0.83325,
+      "best_params": {
+        "clf__C": "10.0"
+      }
+    },
+    "random_forest": {
+      "roc_auc": 0.8807562317352828,
+      "roc_auc_std": 0.009261707845056859,
+      "f1": 0.6856486796785304,
+      "accuracy": 0.828875,
+      "best_params": {
+        "clf__max_depth": "8",
+        "clf__min_samples_leaf": "1"
+      }
+    },
+    "xgboost": {
+      "roc_auc": 0.8826273489121296,
+      "roc_auc_std": 0.009195503236054753,
+      "f1": 0.6935556557007662,
+      "accuracy": 0.83,
+      "best_params": {
+        "clf__max_depth": "3",
+        "clf__min_child_weight": "1"
+      }
+    }
+  },
+  "selected_model": "logistic_regression",
+  "test_metrics": {
+    "default_threshold": {
+      "threshold": 0.5,
+      "accuracy": 0.826,
+      "precision": 0.7466666666666667,
+      "recall": 0.6457990115321252,
+      "f1": 0.6925795053003534,
+      "roc_auc": 0.8899817988506902,
+      "pr_auc": 0.7904850558230222,
+      "brier": 0.12051410824615497,
+      "confusion_matrix": {
+        "tn": 1260,
+        "fp": 133,
+        "fn": 215,
+        "tp": 392
+      }
+    },
+    "tuned_threshold": {
+      "threshold": 0.3500000000000001,
+      "accuracy": 0.817,
+      "precision": 0.6714082503556188,
+      "recall": 0.7775947281713345,
+      "f1": 0.7206106870229008,
+      "roc_auc": 0.8899817988506902,
+      "pr_auc": 0.7904850558230222,
+      "brier": 0.12051410824615497,
+      "confusion_matrix": {
+        "tn": 1162,
+        "fp": 231,
+        "fn": 135,
+        "tp": 472
+      }
+    },
+    "high_recall_threshold": {
+      "threshold": 0.17000000000000004,
+      "accuracy": 0.734,
+      "precision": 0.5363020329138432,
+      "recall": 0.9126853377265239,
+      "f1": 0.675609756097561,
+      "roc_auc": 0.8899817988506902,
+      "pr_auc": 0.7904850558230222,
+      "brier": 0.12051410824615497,
+      "confusion_matrix": {
+        "tn": 914,
+        "fp": 479,
+        "fn": 53,
+        "tp": 554
+      }
+    }
+  },
+  "baseline_accuracy": 0.6965,
+  "bayes_ceiling_accuracy": 0.835,
+  "shap_importance": {
+    "planned_duration_days": 0.3616988240365167,
+    "elapsed_days": 0.21756710599676757,
+    "progress_variance_pct": 0.7636409031227515,
+    "material_availability_pct": 0.20958688247147625,
+    "material_delay_days": 0.03807204990128904,
+    "labor_count": 0.1405769537290822,
+    "previous_delay_count": 0.42859694361052597,
+    "budget_variance_pct": 0.34607284867107413,
+    "deadline_days_remaining": 0.6773138548788663,
+    "task_completion_rate_pct": 0.40688617753032186
+  },
+  "permutation_importance_roc_auc_drop": {
+    "progress_variance_pct": 0.0771265127709623,
+    "deadline_days_remaining": 0.04685761119080924,
+    "task_completion_rate_pct": 0.022679176063892005,
+    "previous_delay_count": 0.0221416567421716,
+    "planned_duration_days": 0.014985612931685866,
+    "budget_variance_pct": 0.012498359058176211,
+    "material_availability_pct": 0.008248349301224856,
+    "elapsed_days": 0.005449464313802399,
+    "labor_count": 0.0016852916027536135,
+    "material_delay_days": 0.0003517233141466014
+  },
+  "leakage_check": "passed - target excluded, no post-outcome or score-shaped columns"
+}

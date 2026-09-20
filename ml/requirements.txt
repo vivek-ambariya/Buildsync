@@ -1,0 +1,13 @@
+# BuildSync AI - ML training environment (local development only).
+# The FastAPI backend does NOT need these to serve the model: the saved
+# artifact is a scikit-learn pipeline, so backend/requirements.txt already
+# covers inference with pandas + numpy + scikit-learn + joblib.
+#
+# macOS note: xgboost needs the OpenMP runtime -> `brew install libomp`
+pandas==2.2.3
+numpy==2.2.1
+scikit-learn==1.6.0
+joblib==1.6.0
+xgboost==3.4.1
+shap==0.52.0
+matplotlib==3.11.2
