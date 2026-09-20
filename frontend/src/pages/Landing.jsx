@@ -11,6 +11,7 @@ import { useLenis } from '@/lib/useLenis'
 import { useTheme } from '@/lib/theme'
 import { prefersReducedMotion } from '@/animations'
 import { Logo } from '@/components/Logo'
+import { LogoLink } from '@/components/LogoLink'
 import { Button, ButtonLink } from '@/components/ui/Button'
 import { BuildSequence } from '@/features/landing/BuildSequence'
 import { LoginModal } from '@/features/landing/LoginModal'
@@ -170,7 +171,7 @@ export default function Landing() {
       {/* Nav */}
       <header className="sticky top-0 z-40 border-b border-line bg-paper/85 backdrop-blur-md">
         <div className="mx-auto flex h-14 w-full max-w-[1400px] items-center gap-4 px-6 lg:px-10">
-          <Logo size={26} />
+          <LogoLink size={26} />
           <nav className="ml-6 hidden items-center gap-6 lg:flex">
             {[
               ['The problem', '#problem'],
@@ -331,7 +332,7 @@ export default function Landing() {
 
       <footer className="border-t border-line py-8">
         <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-3 px-6 sm:flex-row sm:items-center sm:justify-between lg:px-10">
-          <Logo size={22} />
+          <LogoLink size={22} />
           <p className="text-tiny text-subtle">
             Built for the B.Tech Hackathon 2026 — Smart Construction Data Management.
           </p>

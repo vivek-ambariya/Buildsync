@@ -78,18 +78,28 @@ def model_info() -> dict:
     bundle = _bundle()
     if bundle is None:
         return {"available": False}
-    tuned = (bundle.get("test_metrics") or {}).get("tuned_threshold") or {}
+    # `test_metrics` holds the tuned-threshold scores directly, as a flat dict
+    # of accuracy/precision/recall/roc_auc. (metrics.json nests them one level
+    # deeper; the bundle does not.)
+    scores = bundle.get("test_metrics") or {}
     return {
         "available": True,
         "name": bundle.get("model_name"),
         "threshold": round(float(bundle.get("threshold") or 0.5), 3),
         "trained_on_rows": bundle.get("trained_on_rows"),
         "features": list(bundle.get("feature_names") or []),
-        "roc_auc": round(float(tuned["roc_auc"]), 3) if tuned.get("roc_auc") is not None else None,
-        "precision": round(float(tuned["precision"]), 3) if tuned.get("precision") is not None else None,
-        "recall": round(float(tuned["recall"]), 3) if tuned.get("recall") is not None else None,
+        "roc_auc": _score(scores, "roc_auc"),
+        "precision": _score(scores, "precision"),
+        "recall": _score(scores, "recall"),
+        "accuracy": _score(scores, "accuracy"),
         "top_features": _top_features(bundle, 5),
     }
+
+
+def _score(scores: dict, key: str) -> float | None:
+    """One metric as a plain float; the bundle stores some as numpy scalars."""
+    value = scores.get(key)
+    return round(float(value), 3) if value is not None else None
 
 
 def _top_features(bundle: dict, limit: int) -> list[dict]:

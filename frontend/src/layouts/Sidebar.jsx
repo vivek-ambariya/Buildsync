@@ -9,6 +9,7 @@ import { cn } from '@/lib/cn'
 import { useAuth } from '@/lib/auth'
 import { gsap, prefersReducedMotion } from '@/animations'
 import { Logo } from '@/components/Logo'
+import { LogoLink } from '@/components/LogoLink'
 
 /**
  * Navigation is grouped by what the person is doing, not by data model:
@@ -75,7 +76,7 @@ export function Sidebar({ mobileOpen, onClose }) {
         )}
       >
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-line px-4">
-          <Logo size={26} />
+          <LogoLink size={26} />
           <button
             type="button"
             onClick={onClose}

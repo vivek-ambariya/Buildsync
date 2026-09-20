@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 
 import { Button } from '@/components/ui/Button'
 import { Logo } from '@/components/Logo'
+import { LogoLink } from '@/components/LogoLink'
 
 export default function NotFound({ standalone = false }) {
   const content = (
@@ -24,9 +25,7 @@ export default function NotFound({ standalone = false }) {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-10 bg-paper px-6">
-      <Link to="/">
-        <Logo size={30} />
-      </Link>
+      <LogoLink size={30} />
       {content}
     </div>
   )

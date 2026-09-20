@@ -8,6 +8,7 @@ import {
 import { cn } from '@/lib/cn'
 import { gsap, prefersReducedMotion } from '@/animations'
 import { Logo } from '@/components/Logo'
+import { LogoLink } from '@/components/LogoLink'
 
 /**
  * Admin navigation, grouped the way the work divides: the records the
@@ -84,7 +85,7 @@ export function AdminSidebar({ mobileOpen, onClose }) {
         )}
       >
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-line px-4">
-          <Logo size={26} />
+          <LogoLink size={26} />
           <button
             type="button"
             onClick={onClose}
