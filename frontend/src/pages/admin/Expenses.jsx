@@ -156,7 +156,7 @@ export default function AdminExpenses() {
         description="Every rupee committed across the platform, and how it splits by category and month."
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {analytics.loading && !stats ? (
           Array.from({ length: 3 }).map((_, index) => <MetricSkeleton key={index} />)
         ) : stats ? (
@@ -195,7 +195,7 @@ export default function AdminExpenses() {
         ) : null}
       </div>
 
-      <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
+      <div className="mt-4 grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
         <div data-enter className="min-w-0">
           {analytics.loading && !stats ? (
             <ChartSkeleton />

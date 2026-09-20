@@ -165,7 +165,7 @@ export function TasksTab({ project, onChanged }) {
         header: 'Status',
         width: '120px',
         render: (row) =>
-          can('manageTasks') ? (
+          can('updateTasks') ? (
             <Select
               value={row.status}
               onChange={(event) => setTaskStatus(row, event.target.value)}

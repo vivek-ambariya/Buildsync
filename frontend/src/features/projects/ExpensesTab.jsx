@@ -193,7 +193,7 @@ export function ExpensesTab({ project }) {
           <span className="tabular text-ink">{filtered.length}</span> entries ·{' '}
           <span className="tabular text-ink">{formatINR(filtered.reduce((sum, row) => sum + row.amount, 0))}</span>
         </p>
-        {can('manageExpenses') && (
+        {can('submitExpenses') && (
           <Button variant="primary" className="ml-auto" onClick={() => setCreating(true)}>
             <Plus size={15} />
             Record expense
@@ -219,7 +219,7 @@ export function ExpensesTab({ project }) {
                     : 'Record what the project has spent so budget health can be tracked against progress.'
                 }
                 action={
-                  can('manageExpenses') && !category ? (
+                  can('submitExpenses') && !category ? (
                     <Button variant="primary" onClick={() => setCreating(true)}>
                       <Plus size={15} />
                       Record the first expense

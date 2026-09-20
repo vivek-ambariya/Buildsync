@@ -78,7 +78,7 @@ export default function AdminOverview() {
       />
 
       {/* KPI row */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {loading && !data ? (
           Array.from({ length: 6 }).map((_, index) => <MetricSkeleton key={index} />)
         ) : (
@@ -155,7 +155,7 @@ export default function AdminOverview() {
       </div>
 
       {/* Distributions + budget */}
-      <div className="mt-4 grid items-start gap-4 xl:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 items-start gap-4 xl:grid-cols-3">
         <div data-enter>
           {analytics.loading && !stats ? (
             <PanelSkeleton rows={4} />
@@ -268,7 +268,7 @@ export default function AdminOverview() {
       </div>
 
       {/* Attention + activity */}
-      <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="mt-4 grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div data-enter className="min-w-0">
           {analytics.loading && !stats ? (
             <PanelSkeleton rows={5} />

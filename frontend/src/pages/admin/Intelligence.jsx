@@ -131,7 +131,7 @@ export default function AdminIntelligence() {
         )}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {loading && !data ? (
           Array.from({ length: 4 }).map((_, index) => <MetricSkeleton key={index} />)
         ) : (
@@ -188,7 +188,7 @@ export default function AdminIntelligence() {
         </div>
       )}
 
-      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+      <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
         {loading && !data
           ? Array.from({ length: 4 }).map((_, index) => <PanelSkeleton key={index} rows={2} title={false} />)
           : scored.map((row) => <RiskCard key={row.id} row={row} />)}
@@ -233,7 +233,7 @@ export default function AdminIntelligence() {
         </div>
 
         {loading && !data ? (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <PanelSkeleton rows={2} title={false} />
             <PanelSkeleton rows={2} title={false} />
           </div>
@@ -247,7 +247,7 @@ export default function AdminIntelligence() {
             />
           </Panel>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {data.insights.map((insight) => (
               <AIInsightCard key={insight.id} insight={insight} compact />
             ))}

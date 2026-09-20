@@ -4,33 +4,52 @@ import { api, setUnauthorisedHandler, tokenStore } from './api'
 
 const AuthContext = createContext(null)
 
-/** What each role may do. The UI reads this rather than checking role strings. */
+/**
+ * What each role may do, mirrored from the API's matrix in
+ * `app/core/permissions.py`.
+ *
+ * Kept deliberately in step with the server: a flag that is true here while
+ * the API refuses the call means the interface offers a button that fails,
+ * which is worse than not offering it. Hence the split between *managing* a
+ * record (creating and deleting it) and *updating* one that already exists —
+ * a site engineer keeps stock levels current but does not add or remove
+ * material lines, and a contractor moves their own task along without being
+ * able to create, reassign or delete one.
+ */
 const PERMISSIONS = {
   admin: {
-    manageProjects: true, manageTasks: true, manageMaterials: true,
-    manageExpenses: true, uploadDocuments: true, fileSiteUpdates: true,
+    manageProjects: true, manageTasks: true, updateTasks: true,
+    manageMaterials: true, updateMaterials: true,
+    manageExpenses: true, submitExpenses: true,
+    uploadDocuments: true, fileSiteUpdates: true,
     generateReports: true, manageUsers: true,
     uploadSitePhotos: true, reportIssues: true, requestMaterials: true,
     recordWorkforce: true, resolveIssues: true,
   },
   project_manager: {
-    manageProjects: true, manageTasks: true, manageMaterials: true,
-    manageExpenses: true, uploadDocuments: true, fileSiteUpdates: true,
+    manageProjects: true, manageTasks: true, updateTasks: true,
+    manageMaterials: true, updateMaterials: true,
+    manageExpenses: true, submitExpenses: true,
+    uploadDocuments: true, fileSiteUpdates: true,
     generateReports: true, manageUsers: false,
     uploadSitePhotos: true, reportIssues: true, requestMaterials: true,
     recordWorkforce: true, resolveIssues: true,
   },
   site_engineer: {
-    manageProjects: false, manageTasks: true, manageMaterials: true,
-    manageExpenses: false, uploadDocuments: true, fileSiteUpdates: true,
+    manageProjects: false, manageTasks: false, updateTasks: true,
+    manageMaterials: false, updateMaterials: true,
+    manageExpenses: false, submitExpenses: true,
+    uploadDocuments: true, fileSiteUpdates: true,
     generateReports: false, manageUsers: false,
     // Site operations: recording the day, not running the business.
     uploadSitePhotos: true, reportIssues: true, requestMaterials: true,
     recordWorkforce: true, resolveIssues: false,
   },
   contractor: {
-    manageProjects: false, manageTasks: true, manageMaterials: false,
-    manageExpenses: false, uploadDocuments: false, fileSiteUpdates: false,
+    manageProjects: false, manageTasks: false, updateTasks: true,
+    manageMaterials: false, updateMaterials: false,
+    manageExpenses: false, submitExpenses: false,
+    uploadDocuments: false, fileSiteUpdates: true,
     generateReports: false, manageUsers: false,
     uploadSitePhotos: true, reportIssues: true, requestMaterials: false,
     recordWorkforce: false, resolveIssues: false,

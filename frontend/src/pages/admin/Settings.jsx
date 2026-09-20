@@ -131,7 +131,7 @@ export default function AdminSettings() {
         description="What this deployment is running with, and exactly what each role is allowed to do."
       />
 
-      <div className="grid items-start gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
         <div data-enter>
           {loading && !data ? (
             <PanelSkeleton rows={4} />

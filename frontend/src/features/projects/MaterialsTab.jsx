@@ -136,7 +136,8 @@ export function MaterialsTab({ project }) {
                 <MaterialRow
                   key={material.id}
                   material={material}
-                  canEdit={can('manageMaterials')}
+                  canEdit={can('updateMaterials')}
+                  canDelete={can('manageMaterials')}
                   onEdit={() => setEditing(material)}
                   onDelete={() => setDeleting(material)}
                 />
@@ -167,7 +168,7 @@ export function MaterialsTab({ project }) {
   )
 }
 
-function MaterialRow({ material, canEdit, onEdit, onDelete }) {
+function MaterialRow({ material, canEdit, canDelete, onEdit, onDelete }) {
   const metrics = material.metrics || {}
   const tone = material.status === 'critical' ? 'critical' : material.status === 'low_stock' ? 'warning' : 'healthy'
   const consumed = material.required_qty ? (material.used_qty / material.required_qty) * 100 : 0
@@ -186,17 +187,21 @@ function MaterialRow({ material, canEdit, onEdit, onDelete }) {
           </p>
         </div>
 
-        {canEdit && (
+        {(canEdit || canDelete) && (
           <div className="flex items-center gap-0.5">
-            <Button variant="ghost" size="sm" onClick={onEdit}>Update stock</Button>
-            <button
-              type="button"
-              onClick={onDelete}
-              className="rounded p-1.5 text-subtle transition-colors hover:bg-critical-wash hover:text-critical"
-              aria-label={`Remove ${material.name}`}
-            >
-              <Trash2 size={13} />
-            </button>
+            {canEdit && (
+              <Button variant="ghost" size="sm" onClick={onEdit}>Update stock</Button>
+            )}
+            {canDelete && (
+              <button
+                type="button"
+                onClick={onDelete}
+                className="rounded p-1.5 text-subtle transition-colors hover:bg-critical-wash hover:text-critical"
+                aria-label={`Remove ${material.name}`}
+              >
+                <Trash2 size={13} />
+              </button>
+            )}
           </div>
         )}
       </div>
