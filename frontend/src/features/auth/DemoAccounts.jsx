@@ -53,9 +53,7 @@ export function DemoAccounts({ onPick, selectedEmail }) {
               <span className="block truncate text-micro text-muted">{account.email}</span>
             </span>
             <span className="shrink-0 rounded-pill border border-line bg-paper px-2 py-0.5 text-micro text-subtle">
-              {(account.authorized_roles || []).length > 1
-                ? `${account.authorized_roles.length} workspaces`
-                : ROLE_LABELS[account.role] || account.role}
+              {ROLE_LABELS[account.role] || account.role}
             </span>
           </button>
         ))}

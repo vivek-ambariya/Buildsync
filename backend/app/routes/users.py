@@ -178,11 +178,9 @@ async def create(payload: UserCreate, db: Database, user: CurrentUser):
     # When no password is supplied the account still gets a real one; it is
     # returned to the admin exactly once and only the hash is stored.
     issued = payload.password or secrets.token_urlsafe(9)
-    # The primary workspace is always among the authorised ones, whatever the
-    # caller sent, so an account can never be created that cannot sign in.
-    roles = [r.value for r in (payload.roles or [])] or [payload.role.value]
-    if payload.role.value not in roles:
-        roles.insert(0, payload.role.value)
+    # One account, one role. `roles` is kept only because existing records
+    # carry it, and it is written from `role` so the two can never disagree.
+    roles = [payload.role.value]
 
     doc = {
         "name": payload.name,
@@ -245,16 +243,13 @@ async def update(user_id: str, payload: UserUpdate, db: Database, user: CurrentU
             _guard_not_self(user, target, action="change the role of")
             await _guard_last_admin(db, target, action="demoted")
 
-    # Whichever of the two arrived, they have to end up agreeing: the primary
-    # workspace must be one the account is authorised for.
+    # A role change moves the account to that one role; the legacy `roles`
+    # field follows it rather than accumulating.
     if changes.get("role") or changes.get("roles"):
         primary = changes.get("role") or target.get("role")
-        roles = changes.get("roles") or authorized_roles(target)
-        if primary not in roles:
-            roles = [primary, *roles]
-        changes["roles"] = roles
         changes["role"] = primary
-        if Role.admin.value not in roles and Role.admin.value in authorized_roles(target):
+        changes["roles"] = [primary]
+        if primary != Role.admin.value and Role.admin.value in authorized_roles(target):
             _guard_not_self(user, target, action="remove admin access from")
             await _guard_last_admin(db, target, action="demoted")
 

@@ -7,7 +7,6 @@ import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { Avatar } from '@/components/ui/Avatar'
 import { NotificationPanel } from '@/components/NotificationPanel'
-import { WorkspaceSwitcher } from '@/features/auth/WorkspaceSwitcher'
 
 export function Topbar({ onMenu, onSearch }) {
   const { user, signOut, roleLabel } = useAuth()
@@ -129,7 +128,6 @@ export function Topbar({ onMenu, onSearch }) {
               >
                 Team directory
               </Link>
-              <WorkspaceSwitcher onDone={() => setMenuOpen(false)} />
               <button
                 type="button"
                 onClick={() => {

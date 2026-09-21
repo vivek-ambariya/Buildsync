@@ -1,9 +1,7 @@
 import { useCallback, useState } from 'react'
 import { Link, Navigate, useLocation } from 'react-router-dom'
-import { X } from 'lucide-react'
 
 import { useAuth } from '@/lib/auth'
-import { workspaceForSlug } from '@/lib/workspaces'
 import { AuthShell } from '@/features/auth/AuthShell'
 import { DemoAccounts } from '@/features/auth/DemoAccounts'
 import { SignIn1, SignInSocialProof } from '@/components/ui/modern-stunning-sign-in'
@@ -11,21 +9,15 @@ import { SignIn1, SignInSocialProof } from '@/components/ui/modern-stunning-sign
 /**
  * Signing in: one card, one step.
  *
- * Which workspace opens is decided by the account, not by the form. That is
- * why nothing here asks: an account with one workspace has no choice to make,
- * and an account with several lands in its primary one and moves with the
- * switcher in a click. The only time a workspace is named on this page is
- * when a deep link bounced here on the way to one, and then it is shown so
- * the person can see where they are being sent — and dismiss it if they
- * would rather just sign in.
+ * Which workspace opens is decided by the account, not by the form. An
+ * account is one role, so there is no choice to offer on the way in and none
+ * to change afterwards — an administrator signs in and is in the admin
+ * workspace, and reaching another one means signing in to another account.
  */
 export default function Login() {
   const { signIn, status, home } = useAuth()
   const location = useLocation()
 
-  const [intended, setIntended] = useState(() =>
-    workspaceForSlug(location.state?.workspace),
-  )
   const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [prefill, setPrefill] = useState(null)
@@ -50,7 +42,7 @@ export default function Login() {
     setError(null)
     setSubmitting(true)
     try {
-      await signIn(email, password, intended?.slug)
+      await signIn(email, password)
       // No navigation here: the branch above redirects on the next render,
       // once the session — and with it the right destination — actually exists.
     } catch (err) {
@@ -77,22 +69,6 @@ export default function Login() {
         submitting={submitting}
         onSubmit={submit}
         prefill={prefill}
-        eyebrow={
-          intended && (
-            <span className="inline-flex items-center gap-1.5 rounded-pill border border-amber/30 bg-amber-wash py-1 pl-2.5 pr-1.5 text-micro font-medium text-amber-deep">
-              <intended.icon size={12} strokeWidth={2} />
-              Continuing to {intended.label}
-              <button
-                type="button"
-                onClick={() => setIntended(null)}
-                aria-label="Don't continue to that workspace"
-                className="rounded-full p-0.5 transition-colors hover:bg-amber/20"
-              >
-                <X size={11} strokeWidth={2.5} />
-              </button>
-            </span>
-          )
-        }
         footer={
           <>
             Don&apos;t have an account?{' '}

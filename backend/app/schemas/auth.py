@@ -6,10 +6,6 @@ from app.models.common import Role
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=6)
-    # Which workspace the person chose on the way in. A slug
-    # ("project-manager") or a role name ("project_manager") are both accepted;
-    # either way it is a request, not a grant.
-    selected_role: str | None = None
 
 
 # The workspaces an open sign-up form may create, and no others.
@@ -46,11 +42,6 @@ class RegisterRequest(BaseModel):
         if len(cleaned) < 2:
             raise ValueError("enter your full name")
         return cleaned
-
-
-class WorkspaceSwitch(BaseModel):
-    selected_role: str
-    password: str | None = None
 
 
 class UserOut(BaseModel):

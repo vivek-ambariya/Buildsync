@@ -10,7 +10,6 @@ import { Logo } from '@/components/Logo'
 import { SiteProvider, useSite } from '@/features/site-ops/SiteContext'
 import { Sheet } from '@/features/site-ops/Sheet'
 import { SiteBottomNav, SiteMoreSheet, SiteRail } from './SiteNav'
-import { WorkspaceSwitcher } from '@/features/auth/WorkspaceSwitcher'
 
 /**
  * The field app shell.
@@ -220,11 +219,6 @@ function SiteTopbar() {
             Profile
           </button>
 
-          {/* Only rendered for accounts that hold more than one workspace. */}
-          <WorkspaceSwitcher
-            onDone={() => setAccountOpen(false)}
-            className="rounded-control border border-line"
-          />
           <button
             type="button"
             onClick={() => {

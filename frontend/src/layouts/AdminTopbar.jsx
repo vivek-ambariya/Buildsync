@@ -7,7 +7,6 @@ import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { Avatar } from '@/components/ui/Avatar'
 import { NotificationPanel } from '@/components/NotificationPanel'
-import { WorkspaceSwitcher } from '@/features/auth/WorkspaceSwitcher'
 
 /**
  * The control centre's top bar.
@@ -147,7 +146,6 @@ export function AdminTopbar({ onMenu, onSearch }) {
                   {item.label}
                 </Link>
               ))}
-              <WorkspaceSwitcher onDone={() => setMenuOpen(false)} />
               <button
                 type="button"
                 onClick={() => {

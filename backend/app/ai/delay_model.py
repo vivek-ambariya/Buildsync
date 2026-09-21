@@ -16,6 +16,13 @@ Two rules hold throughout:
     answer for a project 400 days past its deadline, and that answer would be
     unsupported. Clamping keeps every prediction inside the model's evidence,
     and `clamped` on the result says when it happened.
+  * A feature the records do not carry at all is not clamped into range — it
+    stops the prediction. Clamping turns "unknown" into a specific value the
+    model then reasons from, which is a guess wearing a number's clothes.
+
+The training features and the live ones are not the same measurements, and
+`build_features` is where that gap lives. Each mapping that departs from the
+trained definition says so at the point it is made.
 """
 from __future__ import annotations
 
@@ -120,8 +127,12 @@ def build_features(
     tasks: list[dict],
     materials: list[dict],
     site_updates: list[dict],
-) -> dict[str, float]:
-    """Map one project's real records onto the model's ten training features."""
+) -> dict[str, float | None]:
+    """Map one project's real records onto the model's ten training features.
+
+    A feature the records do not actually carry comes back as `None`, and
+    `predict` declines to score the project rather than substituting a value.
+    """
     start = to_datetime(project.get("start_date"))
     end = to_datetime(project.get("end_date"))
 
@@ -141,18 +152,16 @@ def build_features(
     completed = sum(1 for t in tasks if t.get("status") == "completed")
     completion_rate = (completed / len(tasks) * 100) if tasks else 0.0
 
-    # Tasks the site has already let slip: the closest real signal to the
-    # training set's count of prior delay events on a project.
-    delayed_tasks = sum(1 for t in tasks if t.get("status") == "delayed")
-
     availability, material_delay = _material_features(materials, schedule)
 
     # Headcount comes from the most recent site report that actually recorded
-    # one; an unfilled field is not a site with nobody on it.
+    # one; an unfilled field is not a site with nobody on it. So when nothing
+    # has recorded it, this is `None` and the project goes unscored rather
+    # than being scored as the smallest crew the model ever saw.
     labour = next(
         (float(u["workers_count"]) for u in reversed(site_updates or [])
          if u.get("workers_count")),
-        0.0,
+        None,
     )
 
     return {
@@ -162,28 +171,68 @@ def build_features(
         "material_availability_pct": availability,
         "material_delay_days": material_delay,
         "labor_count": labour,
-        "previous_delay_count": float(delayed_tasks),
+        "previous_delay_count": _delay_history(tasks),
         "budget_variance_pct": float(budget.get("overrun_percent") or 0),
         "deadline_days_remaining": remaining,
         "task_completion_rate_pct": round(completion_rate, 1),
     }
 
 
+# The task count a training-era project is assumed to have been broken into.
+# `previous_delay_count` was an absolute count of delay events on a project,
+# so converting live delayed-task counts onto that scale needs a reference
+# decomposition to divide by. 25 is the order of magnitude BuildSync projects
+# are actually planned at; recalibrate it against real data before trusting
+# the feature on projects planned much more or less finely.
+TYPICAL_TASK_COUNT = 25.0
+
+
+def _delay_history(tasks: list[dict]) -> float:
+    """Slippage already on the record, on the scale the model was trained on.
+
+    Training counted prior delay *events* on a project, 0-8. What BuildSync
+    holds is tasks in a `delayed` status, and that count scales with how
+    finely the work was broken down as well as with how badly it is going:
+    20 delayed tasks out of 200 is a healthier site than 5 out of 10, but a
+    raw count sends both past the trained ceiling, where `_clamp` scored them
+    identically. Saturation is the defect — above 8 delayed tasks the feature
+    stopped carrying information at all.
+
+    So the count is expressed as a rate and restated against a typical project
+    decomposition. A normally-planned project keeps roughly its absolute
+    count, which is what the feature meant; only unusually finely-sliced
+    projects are discounted, which is the case that was broken.
+    """
+    if not tasks:
+        return 0.0
+    delayed = sum(1 for t in tasks if t.get("status") == "delayed")
+    if not delayed:
+        return 0.0
+    return round(TYPICAL_TASK_COUNT * delayed / len(tasks), 2)
+
+
 def _harmonise_timeline(duration: float, elapsed: float, remaining: float) -> tuple[float, float, float]:
-    """Put a project's timeline on the scale the model was trained on.
+    """Put a project's *span* on the scale the model was trained on.
 
     The training set covers builds of 30-365 days. Real BuildSync projects run
-    to 800, and the three timeline features have to stay consistent with each
-    other: feeding a 760-day duration alongside a 158-day remainder describes a
-    project the model never saw, and clamping each feature on its own describes
-    one that cannot exist.
+    to 800, and feeding a 760-day duration straight in describes a project the
+    model never saw.
 
-    So the timeline is rescaled rather than truncated. The duration is capped
-    into the supported range, and elapsed/remaining are re-expressed as the
-    same *fractions* of that capped span. A 760-day build 57% of the way
+    Duration and elapsed are therefore rescaled rather than truncated: the
+    duration is capped into the supported range and elapsed is re-expressed as
+    the same *fraction* of that capped span. A 760-day build 57% of the way
     through becomes a 365-day build 57% of the way through — which is the
     thing the model actually learned to score, since where a project sits in
     its own lifecycle is what drives delay, not the absolute day count.
+
+    `deadline_days_remaining` is deliberately **not** rescaled. It is the one
+    timeline feature whose meaning is absolute: the model learned that ten
+    days left is an emergency and 120 days left is not, and that is a fact
+    about calendars, not about the project's proportions. Rescaling it made a
+    760-day job with 158 real days of float report 76 days and read as nearly
+    three times riskier than it is. It is returned in real days and bounded by
+    `_clamp` like any other input, so a project outside the trained window is
+    reported as clamped rather than quietly rewritten.
     """
     duration = max(1.0, duration)
     span = max(1.0, elapsed + max(0.0, remaining))
@@ -194,7 +243,7 @@ def _harmonise_timeline(duration: float, elapsed: float, remaining: float) -> tu
     return (
         round(scaled_duration, 1),
         round(scaled_duration * elapsed_fraction, 1),
-        round(scaled_duration * (1.0 - elapsed_fraction), 1),
+        round(remaining, 1),
     )
 
 
@@ -259,6 +308,20 @@ def predict(
         project, schedule=schedule, budget=budget,
         tasks=tasks, materials=materials, site_updates=site_updates,
     )
+
+    # A feature nobody has recorded is not a feature worth guessing. Clamping
+    # an unknown headcount up to the training floor would score an unreported
+    # site as the smallest crew the model ever saw, which reads as severely
+    # under-resourced on exactly the projects we know least about. No score is
+    # the honest answer, and the client already renders it.
+    unrecorded = sorted(name for name, value in raw.items() if value is None)
+    if unrecorded:
+        log.info(
+            "No delay score for project %s: %s not recorded.",
+            project.get("id"), ", ".join(unrecorded),
+        )
+        return None
+
     features, touched = _clamp(raw)
 
     order = list(bundle["feature_names"])

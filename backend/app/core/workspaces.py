@@ -107,17 +107,19 @@ def home_for(role: str | None) -> str:
 
 
 def authorized_roles(user: dict) -> list[str]:
-    """Every role this account may sign in as.
+    """Every role this account may sign in as — which is exactly one.
 
-    Accounts created before multi-role support have only `role`, so that is
-    the fallback. Reading it through one function means the rest of the API
-    never has to know which shape a given record is in.
+    An account is one person doing one job. Whoever administers the platform
+    has an administrator's account; if they also run projects, that is a
+    second account, not a second door on the first one. So the role stored on
+    the record is the whole answer, and there is nothing to choose at sign-in
+    and nothing to switch to afterwards.
+
+    A list is still returned because that is the shape the client and the rest
+    of the API already read, and because it gives the empty answer somewhere
+    to live: a record whose `role` is missing or not a role BuildSync knows
+    has no workspace at all, and is refused rather than guessed at.
     """
-    roles = user.get("roles")
-    if isinstance(roles, list) and roles:
-        valid = [r for r in roles if r in _ROLE_TO_SLUG]
-        if valid:
-            return valid
     primary = user.get("role")
     return [primary] if primary in _ROLE_TO_SLUG else []
 

@@ -274,3 +274,77 @@ flagged = proba >= b["threshold"]
 5. **No calibration layer.** Brier is 0.1205 and probabilities are reasonable,
    but if the UI shows a literal "68% risk" figure, add `CalibratedClassifierCV`
    and check a reliability curve first.
+
+---
+
+## Part 3 — The train/serve gap
+
+Everything above measures how well the model recovers a relationship written
+by `generate_dataset.py`. It says nothing about the second question, which is
+now the larger source of error: **the ten features scored in production are
+not the ten features the model was trained on.**
+
+`backend/app/ai/delay_model.py::build_features` maps live BuildSync records
+onto the trained columns. Four of those mappings are approximations, and they
+are worth stating as plainly as the modelling assumptions are.
+
+| Feature | Trained on | Served from | Status |
+|---|---|---|---|
+| `previous_delay_count` | Count of prior delay *events* on a project, 0–8 | Tasks in `delayed` status, rescaled against a typical 25-task decomposition | Approximation |
+| `labor_count` | Workers assigned | Latest site report that recorded a headcount | Faithful when recorded; **project goes unscored when not** |
+| `material_availability_pct` | Share of required materials on site | Share of material lines holding enough cover to outlast a reorder | **Deliberately different** |
+| `deadline_days_remaining` | Days to contractual deadline, 1–180 | Real days, clamped | Faithful |
+| `planned_duration_days`, `elapsed_days` | 30–365 day builds | Real span rescaled into the trained range, preserving lifecycle position | Approximation |
+
+Three of these were tightened after the first end-to-end review:
+
+1. **`previous_delay_count` no longer saturates.** A raw delayed-task count
+   passes the trained ceiling of 8 on any reasonably sized project, and
+   `_clamp` then scored 20 slipped tasks out of 200 identically to 8 out of
+   10. The count is now expressed as a rate and restated against a typical
+   decomposition, so a normally-planned project keeps roughly its absolute
+   count and only finely-sliced ones are discounted. Projects that genuinely
+   slip past the ceiling still clamp there — that is the model's evidence
+   running out, which is what clamping is for.
+
+2. **A missing headcount no longer becomes a headcount of five.** `labor_count`
+   previously defaulted to 0 and was clamped up to the training floor, so a
+   project nobody had filed a worker count for scored as the smallest crew the
+   model ever saw — which, given the Simpson's-paradox structure in §6, reads
+   as severely under-resourced on exactly the projects least is known about.
+   An unrecorded feature now returns `None` and the project is reported as
+   unscored.
+
+3. **`deadline_days_remaining` is no longer rescaled.** Duration and elapsed
+   days are still rescaled into the trained window, because lifecycle position
+   is what the model learned. Urgency is not proportional in the same way: the
+   model learned that ten days left is an emergency and 120 days is not, and
+   that is a fact about calendars. Rescaling turned a 760-day job with 158 real
+   days of float into 76 model-days and read as roughly three times riskier
+   than it was.
+
+**Measured effect on the seeded portfolio (8 projects).** Seven move by 1.7
+points or less. Skyline Tower moves from 42.1% to 29.4% and stops being
+flagged: it has 329 real days remaining, which the old rescaling compressed to
+158 and read as schedule pressure that does not exist. No project became
+unscored, because every seeded project records a headcount.
+
+That last point is worth noting before a demo: **at the shipped 0.35 threshold
+the seeded portfolio now flags nothing.** The scores are more faithful, but if
+the dashboard needs to show the flagging path working, `threshold_high_recall`
+(0.17) is already in the bundle and flags Skyline Tower.
+
+### What this part still does not establish
+
+- The mapping table above is **unvalidated**. No real project has been scored
+  and its outcome observed, so the approximations are reasoned, not measured.
+- `TYPICAL_TASK_COUNT = 25` is calibrated to how BuildSync projects happen to
+  be planned today, not to anything in the training data. It is the first
+  constant to revisit against real projects.
+- The `material_availability_pct` redefinition is defensible (the naive ratio
+  reads ~3% on every healthy project mid-build) but it means the served
+  feature and the trained feature measure different quantities, and no amount
+  of model-side rigour fixes that.
+- There are no automated tests over `build_features`. The numbers in this
+  section were produced by scoring the bundle directly against the seeded
+  database and comparing against the previous implementation.

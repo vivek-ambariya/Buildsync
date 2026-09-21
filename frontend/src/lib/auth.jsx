@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 
 import { api, setUnauthorisedHandler, tokenStore } from './api'
-import { homeForRole, workspaceForRole, workspacesFor, WORKSPACE_LIST } from './workspaces'
+import { homeForRole, workspaceForRole } from './workspaces'
 
 
 const AuthContext = createContext(null)
@@ -108,8 +108,8 @@ export function AuthProvider({ children }) {
       })
   }, [])
 
-  const signIn = useCallback(async (email, password, selectedRole) => {
-    const result = await api.auth.login(email, password, selectedRole)
+  const signIn = useCallback(async (email, password) => {
+    const result = await api.auth.login(email, password)
     tokenStore.set(result.access_token)
     setUser(result.user)
     setStatus('authenticated')
@@ -125,20 +125,6 @@ export function AuthProvider({ children }) {
    */
   const signUp = useCallback(async ({ name, email, password, role }) => {
     const result = await api.auth.register({ name, email, password, role })
-    tokenStore.set(result.access_token)
-    setUser(result.user)
-    setStatus('authenticated')
-    return result.user
-  }, [])
-
-  /**
-   * Move an open session to another of the account's workspaces.
-   *
-   * The server re-authorises it from the database and issues a fresh token,
-   * so this cannot widen a session — it exchanges one for another.
-   */
-  const switchWorkspace = useCallback(async (selectedRole, password) => {
-    const result = await api.auth.switchWorkspace(selectedRole, password)
     tokenStore.set(result.access_token)
     setUser(result.user)
     setStatus('authenticated')
@@ -166,15 +152,12 @@ export function AuthProvider({ children }) {
       roleLabel: ROLE_LABELS[user?.role] || '',
       home: homeForRole(user?.role),
       isField: isFieldRole(user?.role),
-      switchWorkspace,
       /** The workspace this session is in. */
       workspace: workspaceForRole(user?.role),
-      /** Every workspace available in BuildSync for switching. */
-      authorizedWorkspaces: WORKSPACE_LIST,
       authorizedRoles: user?.authorized_roles || [],
 
     }),
-    [user, status, signIn, signUp, signOut, switchWorkspace],
+    [user, status, signIn, signUp, signOut],
   )
 
 

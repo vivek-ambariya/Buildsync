@@ -78,20 +78,15 @@ const remove = (url) => client.delete(url).then((r) => r.data)
 
 export const api = {
   auth: {
-    // `selected_role` is the workspace the person chose on the way in. The
-    // server treats it as a request and checks it against their account.
-    login: (email, password, selectedRole) =>
-      post('/auth/login', { email, password, selected_role: selectedRole || null }),
-    // Self-service sign-up. The workspace is a request like `selected_role`
-    // is on the way in: the server decides what may actually be created, and
-    // refuses Admin outright.
+    // No workspace is named on the way in: the account has one role, and the
+    // server decides where the session lands from it.
+    login: (email, password) => post('/auth/login', { email, password }),
+    // Self-service sign-up. The role asked for is a request, not a grant:
+    // the server decides what may be created, and refuses Admin outright.
     register: ({ name, email, password, role }) =>
       post('/auth/register', { name, email, password, role }),
     me: () => get('/auth/me'),
     workspaces: () => get('/auth/workspaces'),
-    switchWorkspace: (selectedRole, password) =>
-      post('/auth/switch-workspace', { selected_role: selectedRole, password: password || null }),
-
     demoAccounts: () => get('/auth/demo-accounts'),
   },
   // One guarded entry point per workspace. Each is refused to every other role.

@@ -1,27 +1,29 @@
-import { useState } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
-import { ShieldAlert, ShieldCheck } from 'lucide-react'
+import { ShieldAlert } from 'lucide-react'
 
 import { useAuth } from '@/lib/auth'
 import { workspaceForSlug } from '@/lib/workspaces'
 import { Logo } from '@/components/Logo'
 import { Button, ButtonLink } from '@/components/ui/Button'
 import { Panel } from '@/components/ui/Panel'
-import { Field } from '@/components/ui/Form'
 
 /**
- * Keeps a workspace's routes to the people who hold it.
+ * Keeps a workspace's routes to the people whose account is for it.
  *
- * If accessing a workspace while in another workspace session, prompts for password verification.
+ * An account has one role and therefore one workspace, so this is a plain
+ * yes or no — there is nothing to switch into and no second password to ask
+ * for. Someone who wants a different workspace signs in to the account that
+ * holds it.
+ *
+ * It is UX, not security. Every endpoint behind these screens authorises the
+ * request again from the role stored on the account, so the worst that
+ * getting past this component achieves is a page of refusals. What it buys is
+ * that someone who lands on the wrong URL is told why and where to go.
  */
 export function RequireWorkspace({ slug }) {
-  const { status, authorizedRoles, authorizedWorkspaces, workspace: currentWorkspace, home, signOut, switchWorkspace, user } = useAuth()
+  const { status, workspace: current, home, signOut } = useAuth()
   const location = useLocation()
-  const targetWorkspace = workspaceForSlug(slug)
-
-  const [password, setPassword] = useState('')
-  const [verifying, setVerifying] = useState(false)
-  const [error, setError] = useState('')
+  const target = workspaceForSlug(slug)
 
   if (status === 'loading') {
     return (
@@ -33,10 +35,10 @@ export function RequireWorkspace({ slug }) {
   }
 
   if (status === 'anonymous') {
-    return <Navigate to="/login" replace state={{ from: location, workspace: slug }} />
+    return <Navigate to="/login" replace state={{ from: location }} />
   }
 
-  if (targetWorkspace && !authorizedRoles.includes(targetWorkspace.role)) {
+  if (target && current?.slug !== slug) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-paper px-4">
         <Panel className="w-full max-w-md p-7 text-center">
@@ -45,13 +47,12 @@ export function RequireWorkspace({ slug }) {
           </div>
           <h1 className="font-display text-h3 text-ink">Access denied</h1>
           <p className="mt-2 text-base leading-relaxed text-muted">
-            You don't have permission to access the {targetWorkspace.label} workspace.
+            You don&apos;t have permission to access the {target.label} workspace.
           </p>
 
-          {authorizedWorkspaces.length > 0 && (
+          {current && (
             <p className="mt-3 text-tiny text-subtle">
-              Your account can open{' '}
-              {authorizedWorkspaces.map((w) => w.label).join(' and ')}.
+              This account opens the {current.label} workspace.
             </p>
           )}
 
@@ -63,64 +64,6 @@ export function RequireWorkspace({ slug }) {
               Sign in as someone else
             </Button>
           </div>
-        </Panel>
-      </div>
-    )
-  }
-
-  // If accessing a workspace while in another workspace session, prompt for password
-  if (currentWorkspace?.slug !== slug) {
-    const handleVerify = async (e) => {
-      e.preventDefault()
-      if (!password) return
-      setVerifying(true)
-      setError('')
-      try {
-        await switchWorkspace(slug, password)
-      } catch (err) {
-        setError(err.message || 'Incorrect password.')
-      } finally {
-        setVerifying(false)
-      }
-    }
-
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-paper px-4">
-        <Panel className="w-full max-w-md p-7 text-center">
-          <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-panel border border-amber/30 bg-amber-wash text-amber-deep">
-            <ShieldCheck size={20} strokeWidth={1.75} />
-          </div>
-          <h1 className="font-display text-h3 text-ink">Password Required</h1>
-          <p className="mt-2 text-base leading-relaxed text-muted">
-            Enter your account password to enter the {targetWorkspace?.label || slug} workspace.
-          </p>
-
-          <form onSubmit={handleVerify} className="mt-6 space-y-4 text-left">
-            {error && (
-              <div className="rounded-control border border-critical/30 bg-critical-wash px-3 py-2 text-tiny font-medium text-critical">
-                {error}
-              </div>
-            )}
-            <Field label="Password" required>
-              <input
-                type="password"
-                autoFocus
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password"
-                className="control w-full"
-              />
-            </Field>
-            <div className="flex flex-col gap-2 pt-2">
-              <Button type="submit" variant="primary" loading={verifying} className="w-full">
-                Verify & Access {targetWorkspace?.label || 'Workspace'}
-              </Button>
-              <ButtonLink to={home} variant="ghost" size="sm" className="w-full text-center">
-                Return to {currentWorkspace?.label || 'workspace'}
-              </ButtonLink>
-            </div>
-          </form>
         </Panel>
       </div>
     )
