@@ -8,9 +8,13 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import random
+import shutil
 import sys
+import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from app.ai import document_ai
 from app.core.config import settings
@@ -21,17 +25,27 @@ from app.db.mongodb import close, get_database
 from app.models.common import utcnow
 from app.services.project_service import recalculate_progress
 from app.seed.catalog import (
+    EXPENSE_NOTES,
     EXPENSE_TEMPLATES,
     ISSUE_NOTES,
+    MATERIAL_REQUEST_NOTES,
+    MATERIAL_USAGE_NOTES,
     MATERIAL_SPECS,
     PASSWORD,
     PEOPLE,
     PHASES,
     PROJECTS,
+    SITE_ISSUE_TEMPLATES,
+    SITE_UPDATE_NOTES,
     TASK_TEMPLATES,
     WEATHER,
     WORK_NOTES,
+    WORKFORCE_NOTES,
 )
+
+# Where the vendored demo photographs live, and where the API serves them from.
+PHOTO_SOURCE_DIR = Path(__file__).resolve().parent / "assets" / "site-photos"
+PHOTO_STORAGE_SUBDIR = "site-photos"
 
 rng = random.Random(20260920)
 # Anchored to the real clock, not a rounded hour, so a record seeded "8 minutes
@@ -85,7 +99,7 @@ def phase_progress(overall: float) -> dict[str, float]:
     return out
 
 
-async def seed_project(db, spec: dict, people: dict[str, dict]) -> dict:
+async def seed_project(db, spec: dict, people: dict[str, dict], photo_catalogue=None) -> dict:
     manager = people[spec["manager"]]
     team = [people[name] for name in spec["team"]]
     start = NOW - timedelta(days=spec["started_days_ago"])
@@ -114,13 +128,214 @@ async def seed_project(db, spec: dict, people: dict[str, dict]) -> dict:
     await seed_tasks(db, pid, spec, start, end, by_phase, team, manager)
     await seed_materials(db, pid, spec)
     await seed_expenses(db, pid, spec, start)
-    await seed_site_updates(db, pid, spec, start, team)
+    # Photographs first: the daily reports and the field records reference them.
+    photo_ids = await seed_site_photos(db, pid, spec, team, photo_catalogue or [])
+    await seed_site_updates(db, pid, spec, start, team, photo_ids)
+    await seed_field_records(db, pid, spec, team, photo_ids)
+    await seed_progress_updates(db, pid, team, photo_ids)
 
     # Let the tasks be the source of truth. If the seeded target and the task
     # records disagree, the first task anyone edits would shift the project's
     # progress for no visible reason.
     project_doc["actual_progress"] = await recalculate_progress(db, str(pid))
     return project_doc
+
+
+def _usage_log(used: float, unit: str, days: int) -> list[dict]:
+    """A short draw history behind a material's consumed quantity."""
+    if used <= 0:
+        return []
+    entries = rng.randint(3, 6)
+    shares = [rng.uniform(0.6, 1.4) for _ in range(entries)]
+    total = sum(shares)
+    log = []
+    for index, share in enumerate(shares):
+        when = NOW - timedelta(days=int(days * (1 - (index + 1) / (entries + 1))))
+        log.append({
+            "quantity": round(used * share / total, 1),
+            "unit": unit,
+            "note": rng.choice(MATERIAL_USAGE_NOTES),
+            "recorded_at": when,
+        })
+    return log
+
+
+def _photo_catalogue() -> list[dict]:
+    """The vendored demo photographs, or an empty list if they were not kept.
+
+    The files are checked in under `app/seed/assets/site-photos`. If somebody
+    strips them out, seeding still works and the gallery is simply empty —
+    nothing here is load-bearing.
+    """
+    manifest = PHOTO_SOURCE_DIR / "manifest.json"
+    if not manifest.exists():
+        return []
+    try:
+        entries = json.loads(manifest.read_text())
+    except (json.JSONDecodeError, OSError):
+        return []
+    return [e for e in entries if (PHOTO_SOURCE_DIR / e["file"]).exists()]
+
+
+PHOTO_CAPTIONS = {
+    "foundation": ["Raft reinforcement tied and inspected", "Footing excavation at the north end",
+                   "Pile cap shuttering before the pour", "Setting out checked against the drawing"],
+    "structure": ["Column formwork struck on the third floor", "Slab shuttering ready for the pour",
+                  "Scaffold raised to the next lift", "Frame at the current top level"],
+    "electrical": ["Conduit run cast into the slab", "Panel board position marked out",
+                   "Cable tray fixed along the service corridor"],
+    "plumbing": ["Sleeves cast through the slab", "Drainage line laid in the trench",
+                 "Riser fixed in the shaft"],
+    "finishing": ["Internal plaster in progress", "First coat on the east elevation",
+                  "Door frames set out in the flats"],
+    "other": ["Tower crane over the site", "General view from the site gate",
+              "Site establishment and access road"],
+}
+
+
+async def seed_site_photos(db, pid, spec, team, catalogue) -> list:
+    """Copy demo photographs into storage and file them against a project.
+
+    Each record gets its own copy of the file rather than sharing one, so
+    deleting a photograph from the interface behaves the way it would for a
+    real upload instead of blanking somebody else's record.
+    """
+    if not catalogue:
+        return []
+    photographers = [m for m in team if m["role"] in ("site_engineer", "contractor")] or team
+    if not photographers:
+        return []
+
+    storage = settings.storage_path / PHOTO_STORAGE_SUBDIR
+    storage.mkdir(parents=True, exist_ok=True)
+
+    picks = rng.sample(catalogue, k=min(len(catalogue), rng.randint(4, 6)))
+    docs = []
+    for entry in picks:
+        stored_name = f"seed-{uuid.uuid4().hex}.jpg"
+        try:
+            shutil.copyfile(PHOTO_SOURCE_DIR / entry["file"], storage / stored_name)
+        except OSError:
+            continue
+        taken = NOW - timedelta(days=rng.randint(1, min(90, max(2, spec["started_days_ago"]))),
+                                hours=rng.randint(6, 17))
+        author = rng.choice(photographers)
+        docs.append({
+            "project_id": pid,
+            "task_id": None,
+            "name": entry["file"],
+            "stored_name": stored_name,
+            "content_type": "image/jpeg",
+            "size_bytes": (storage / stored_name).stat().st_size,
+            "category": entry["category"],
+            "description": rng.choice(PHOTO_CAPTIONS.get(entry["category"], ["On site"])),
+            "taken_at": taken,
+            "uploaded_by": author["_id"],
+            "uploaded_by_name": author["name"],
+            "created_at": taken,
+        })
+    if not docs:
+        return []
+    result = await db[C.site_photos].insert_many(docs)
+    return list(result.inserted_ids)
+
+
+async def seed_field_records(db, pid, spec, team, photo_ids) -> None:
+    """The field collections the site app writes to: issues, workforce, requests.
+
+    Without these the site screens open on an empty state, which reads as a
+    feature that does not work rather than as a quiet week.
+    """
+    crew = [m for m in team if m["role"] in ("site_engineer", "contractor")] or team
+    if not crew:
+        return
+    reporter = crew[0]
+
+    issues = []
+    for title, description, severity, location in rng.sample(SITE_ISSUE_TEMPLATES, k=rng.randint(2, 3)):
+        raised = NOW - timedelta(days=rng.randint(1, 26), hours=rng.randint(1, 9))
+        resolved = rng.random() < 0.45
+        issues.append({
+            "title": title, "project_id": pid, "task_id": None, "severity": severity,
+            "description": description, "location": location,
+            "photo_ids": rng.sample(photo_ids, k=min(len(photo_ids), 2)) if photo_ids and rng.random() < 0.6 else [],
+            "expected_resolution": raised + timedelta(days=rng.randint(2, 9)),
+            "status": "resolved" if resolved else "open",
+            "reported_by": reporter["_id"], "reported_by_name": reporter["name"],
+            "created_at": raised,
+            "updated_at": raised + timedelta(days=rng.randint(0, 4)) if resolved else raised,
+        })
+    if issues:
+        await db[C.site_issues].insert_many(issues)
+
+    logs = []
+    for back in range(rng.randint(5, 9)):
+        day = (NOW - timedelta(days=back)).replace(hour=0, minute=0, second=0, microsecond=0)
+        crews = [{"team": name, "trade": trade, "count": rng.randint(4, 26)}
+                 for name, trade in (("Sharma Constructions", "Masonry"),
+                                     ("Yadav Constructions", "RCC"),
+                                     ("Site labour", "General"))]
+        present = sum(c["count"] for c in crews)
+        absent = rng.randint(0, 6)
+        logs.append({
+            "date": day, "project_id": pid, "crews": crews,
+            "present": present, "absent": absent, "total": present + absent,
+            "notes": rng.choice(WORKFORCE_NOTES) if rng.random() < 0.6 else "",
+            "recorded_by": reporter["_id"], "recorded_by_name": reporter["name"],
+            "created_at": day + timedelta(hours=18), "updated_at": day + timedelta(hours=18),
+        })
+    if logs:
+        await db[C.workforce_logs].insert_many(logs)
+
+    short = [m async for m in db[C.materials].find(
+        {"project_id": pid, "status": {"$in": ["critical", "low_stock"]}}).limit(3)]
+    requests = []
+    for material in short:
+        raised = NOW - timedelta(days=rng.randint(0, 12), hours=rng.randint(1, 8))
+        requests.append({
+            "project_id": pid, "material_id": material["_id"], "material_name": material["name"],
+            "required_qty": round(max(1.0, material["required_qty"] * rng.uniform(0.04, 0.12)), 1),
+            "unit": material["unit"],
+            "reason": rng.choice(MATERIAL_REQUEST_NOTES),
+            "urgency": "high" if material["status"] == "critical" else "normal",
+            "needed_by": raised + timedelta(days=rng.randint(3, 12)),
+            "status": rng.choice(["pending", "pending", "approved", "ordered"]),
+            "requested_by": reporter["_id"], "requested_by_name": reporter["name"],
+            "created_at": raised,
+        })
+    if requests:
+        await db[C.material_requests].insert_many(requests)
+
+
+async def seed_progress_updates(db, pid, team, photo_ids) -> None:
+    """Task-level progress entries, the record the site app writes on submit."""
+    crew = [m for m in team if m["role"] in ("site_engineer", "contractor")] or team
+    if not crew:
+        return
+    tasks = [t async for t in db[C.tasks].find(
+        {"project_id": pid, "status": {"$in": ["in_progress", "completed", "delayed"]}}).limit(40)]
+    if not tasks:
+        return
+    docs = []
+    for task in rng.sample(tasks, k=min(len(tasks), rng.randint(3, 6))):
+        current = float(task.get("progress") or 0)
+        previous = round(max(0.0, current - rng.uniform(6, 22)), 1)
+        author = rng.choice(crew)
+        when = NOW - timedelta(days=rng.randint(1, 20), hours=rng.randint(1, 9))
+        docs.append({
+            "project_id": pid, "task_id": task["_id"], "task_title": task.get("title", ""),
+            "previous_progress": previous, "new_progress": current,
+            "work_completed": rng.choice(WORK_NOTES),
+            "workers_used": rng.randint(6, 48),
+            "materials_used": [{"name": rng.choice(MATERIAL_SPECS)[0],
+                                "quantity": round(rng.uniform(2, 30), 1), "unit": "units"}],
+            "notes": rng.choice(SITE_UPDATE_NOTES) if rng.random() < 0.7 else "",
+            "photo_ids": rng.sample(photo_ids, k=min(len(photo_ids), 2)) if photo_ids and rng.random() < 0.5 else [],
+            "recorded_by": author["_id"], "recorded_by_name": author["name"],
+            "created_at": when,
+        })
+    if docs:
+        await db[C.progress_updates].insert_many(docs)
 
 
 async def seed_milestones(db, pid, spec, start, by_phase) -> None:
@@ -215,6 +430,10 @@ async def seed_materials(db, pid, spec) -> None:
             "unit_cost": float(cost), "supplier": supplier, "lead_time_days": lead,
             "status": status, "created_at": NOW - timedelta(days=spec["started_days_ago"]),
             "updated_at": NOW - timedelta(days=rng.randint(0, 5)),
+            # A stock figure with no history behind it reads as a typo. These
+            # are the last few draws against the store, newest last, and they
+            # sum to a sensible share of what the project has consumed.
+            "usage_log": _usage_log(used, unit, spec["started_days_ago"]),
         })
     await db[C.materials].insert_many(docs)
 
@@ -245,14 +464,15 @@ async def seed_expenses(db, pid, spec, start) -> None:
                 "planned_amount": round(amount * rng.uniform(0.86, 1.06), -2),
                 "vendor": vendor, "date": date,
                 "invoice_ref": f"INV-{rng.randint(1000, 9999)}",
-                "notes": "", "created_at": date,
+                "notes": rng.choice(EXPENSE_NOTES), "created_at": date,
             })
     if docs:
         await db[C.expenses].insert_many(docs)
 
 
-async def seed_site_updates(db, pid, spec, start, team) -> None:
+async def seed_site_updates(db, pid, spec, start, team, photo_ids=None) -> None:
     """Weekly reports tracing the progress curve, so the trend fit has data."""
+    photo_ids = photo_ids or []
     reporters = [m for m in team if m["role"] == "site_engineer"] or team
     if not reporters:
         return
@@ -280,7 +500,11 @@ async def seed_site_updates(db, pid, spec, start, team) -> None:
             ],
             "issues": rng.choice(ISSUE_NOTES) if has_issue else "",
             "weather": rng.choice(WEATHER),
-            "photos": [],
+            # Roughly two reports in five carry photographs, which is about how
+            # often a site manager actually attaches one.
+            "photos": [str(pid_) for pid_ in rng.sample(photo_ids, k=min(len(photo_ids), rng.randint(1, 3)))]
+            if photo_ids and rng.random() < 0.4 else [],
+            "notes": rng.choice(SITE_UPDATE_NOTES) if rng.random() < 0.75 else "",
             "reported_by": reporter["_id"],
             "reported_by_name": reporter["name"],
             "reported_by_role": reporter["role"],
@@ -463,12 +687,19 @@ async def run(keep: bool = False) -> None:
             await db[collection].delete_many({})
     for stale in settings.storage_path.glob("seed-*"):
         stale.unlink(missing_ok=True)
+    # Photographs from a previous seed, which live a directory down.
+    for stale in (settings.storage_path / PHOTO_STORAGE_SUBDIR).glob("seed-*"):
+        stale.unlink(missing_ok=True)
 
     await ensure_indexes(db)
     people = await seed_users(db)
+    photo_catalogue = _photo_catalogue()
+    if not photo_catalogue:
+        print("No demo photographs found in app/seed/assets/site-photos; "
+              "the gallery will be empty.")
     projects: dict[str, dict] = {}
     for spec in PROJECTS:
-        projects[spec["name"]] = await seed_project(db, spec, people)
+        projects[spec["name"]] = await seed_project(db, spec, people, photo_catalogue)
 
     await seed_documents(db, projects, people)
     await seed_activity_and_notifications(db, projects, people)
@@ -476,7 +707,9 @@ async def run(keep: bool = False) -> None:
     counts = {
         name: await db[getattr(C, name)].count_documents({})
         for name in ("users", "projects", "tasks", "milestones", "materials",
-                     "expenses", "documents", "site_updates", "notifications", "activities")
+                     "expenses", "documents", "site_updates", "site_photos",
+                     "site_issues", "workforce_logs", "material_requests",
+                     "progress_updates", "notifications", "activities")
     }
     print(f"Seeded {settings.mongodb_db}:")
     for name, count in counts.items():

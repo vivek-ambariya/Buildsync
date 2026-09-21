@@ -217,3 +217,69 @@ ISSUE_NOTES = [
 ]
 
 WEATHER = ["Clear", "Clear", "Clear", "Hazy", "Overcast", "Light rain", "Hot and dry"]
+
+
+# --- Demo copy for fields that nothing used to populate ----------------------
+# These exist because the seeded portfolio had whole columns sitting empty:
+# every expense had a blank note, every site report had a blank note, and no
+# material carried a usage history. An empty column reads as a broken feature
+# on screen, not as a project with nothing to say.
+
+EXPENSE_NOTES = [
+    "Rate held from the original tender; no escalation claimed.",
+    "Part payment released against the delivery challan, balance on reconciliation.",
+    "Includes unloading and stacking at the site store.",
+    "Quantity verified against the measurement sheet before certification.",
+    "Escalation of 3% allowed per the contract's steel index clause.",
+    "Retention of 5% withheld pending the defect liability period.",
+    "Freight charged separately by the supplier; approved by the PM.",
+    "Second running account bill for the same work order.",
+    "Rate revised after the vendor's quarterly price list was reissued.",
+    "Cross-checked against the BOQ line before release.",
+]
+
+SITE_UPDATE_NOTES = [
+    "Crew rotated to the north face after lunch to stay out of the sun.",
+    "Safety briefing held at the gate before the pour started.",
+    "Client representative walked the floor and signed off the setting out.",
+    "Night shift kept on for the concrete finishing.",
+    "Consultant's inspection cleared the reinforcement before closing the shutter.",
+    "Curing compound applied the same evening.",
+    "Material lift out of service for an hour; loads moved by hoist.",
+    "Extra ganger brought in to keep the block work moving.",
+    "Third-party testing agency collected cube samples from the pour.",
+    "Access road watered twice to keep the dust down.",
+]
+
+MATERIAL_USAGE_NOTES = [
+    "Issued to the block work gang.",
+    "Drawn for the slab pour.",
+    "Consumed in column casting.",
+    "Issued against the plastering work order.",
+    "Used on the podium level.",
+    "Drawn for the retaining wall.",
+]
+
+SITE_ISSUE_TEMPLATES = [
+    ("Rain stopped the podium pour", "Water collected in the shutter after the afternoon downpour. Pour rescheduled once the formwork is dried and re-checked.", "high", "Podium level, grid C4-C7"),
+    ("Steel delivery short by 4 tonnes", "Supplier sent 14.2 tonnes against an order of 18.4. Balance promised within three days; column work resequenced meanwhile.", "high", "Site store"),
+    ("Hoist out of service", "Material hoist tripped repeatedly under load. Electrician called; loads being moved by the tower crane in the interim.", "medium", "Block B core"),
+    ("Honeycombing found in column C12", "Consultant flagged honeycombing at the base of C12 during inspection. Repair method statement submitted for approval.", "medium", "Second floor, grid C12"),
+    ("Access road washed out", "The approach from the main gate is rutted after two days of rain. Transit mixers are struggling to reach the pump.", "medium", "Site approach road"),
+    ("Scaffold handrail missing on level 6", "Safety walk found a missing handrail on the east elevation. Work in that bay stopped until it is reinstated.", "high", "Level 6, east elevation"),
+]
+
+WORKFORCE_NOTES = [
+    "Full strength on site; no absentees.",
+    "Two masons short, covered by the sub-contractor's gang.",
+    "Extra bar benders brought in for the raft.",
+    "Reduced crew — festival leave.",
+    "Night shift kept on for the pour.",
+]
+
+MATERIAL_REQUEST_NOTES = [
+    "Required before the next slab cycle starts.",
+    "Current stock will run out in three working days.",
+    "Needed for the plastering front on the lower floors.",
+    "Ordered early because the lead time went up last month.",
+]
