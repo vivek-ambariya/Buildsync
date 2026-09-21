@@ -5,11 +5,14 @@ import { prefersReducedMotion } from '@/animations'
 import { gsap } from './scroll'
 
 /**
- * A looping two-act scene: the site, then the room.
+ * A looping three-act scene: the site, the room, then the money.
  *
  * Act one is a worker building a floor. Act two is the project review where
- * what he built becomes a number someone decides on. That is the whole product
- * in two frames, which is why it sits in the hero rather than a screenshot.
+ * what he built becomes a number someone decides on. Act three is that
+ * decision reaching the investor, who releases the tranche that pays for the
+ * next floor — which is what puts the worker back on site in act one. The loop
+ * is a cycle rather than a sequence, which is why it sits in the hero rather
+ * than a screenshot.
  *
  * The loop runs on its own clock — it is the one piece of non-scroll motion on
  * the page, and it is here because the story is a sequence, not a state.
@@ -20,6 +23,7 @@ import { gsap } from './scroll'
 const ACTS = [
   { key: 'site', time: '07:40', label: 'On site', caption: 'A slab is poured. Steel goes in. Someone counts the crew.' },
   { key: 'room', time: '09:15', label: 'Project review', caption: 'The same day, read as progress, spend and a decision.' },
+  { key: 'capital', time: '11:30', label: 'Funding release', caption: 'The investor sees the same day. The tranche goes out, and the next floor is paid for.' },
 ]
 
 const ACT_SECONDS = 5.4
@@ -35,13 +39,13 @@ export function HeroScene() {
 
     if (prefersReducedMotion()) {
       gsap.set('[data-act="site"]', { opacity: 1 })
-      gsap.set('[data-act="room"]', { opacity: 0 })
+      gsap.set('[data-act="room"], [data-act="capital"]', { opacity: 0 })
       return undefined
     }
 
     const context = gsap.context(() => {
       gsap.set('[data-act="site"]', { opacity: 1 })
-      gsap.set('[data-act="room"]', { opacity: 0, y: 14 })
+      gsap.set('[data-act="room"], [data-act="capital"]', { opacity: 0, y: 14 })
 
       // The review's own opening: the chart fills in and the finding surfaces.
       // Run once per visit to the room rather than oscillating, so the screen
@@ -62,20 +66,42 @@ export function HeroScene() {
       gsap.set('[data-screen-bar]', { scaleY: 0.08, transformOrigin: 'bottom center' })
       gsap.set('[data-screen-alert]', { opacity: 0 })
 
-      // --- The loop: two acts, cross-fading, forever --------------------
+      // The release: each bundle that lands pays for a floor, and the tranche
+      // is marked funded once the last one is in. Like the review, it plays
+      // once per visit so the act ends on the outcome rather than mid-transfer.
+      const release = gsap
+        .timeline({ paused: true })
+        .fromTo(
+          '[data-funded-floor]',
+          { opacity: 0, scaleY: 0.15, transformOrigin: 'bottom center' },
+          { opacity: 1, scaleY: 1, duration: 0.5, stagger: 1.1, ease: 'power2.out' },
+          0.95,
+        )
+        .fromTo(
+          '[data-fund-stamp]',
+          { opacity: 0, scale: 0.84, transformOrigin: 'center' },
+          { opacity: 1, scale: 1, duration: 0.45, ease: 'back.out(2)' },
+          '+=0.2',
+        )
+      gsap.set('[data-funded-floor]', { opacity: 0, scaleY: 0.15, transformOrigin: 'bottom center' })
+      gsap.set('[data-fund-stamp]', { opacity: 0 })
+
+      // --- The loop: three acts, cross-fading, forever ------------------
+      // Driven off ACTS rather than written out, so the story is edited in one
+      // place — the array — rather than in the timeline as well.
+      const openings = { room: review, capital: release }
       const loop = gsap.timeline({ repeat: -1 })
-      loop
-        .to({}, { duration: ACT_SECONDS })
-        .call(() => {
-          setAct(1)
-          review.restart()
-        })
-        .to('[data-act="site"]', { opacity: 0, y: -14, duration: FADE, ease: 'power2.inOut' })
-        .to('[data-act="room"]', { opacity: 1, y: 0, duration: FADE, ease: 'power2.out' }, '<0.15')
-        .to({}, { duration: ACT_SECONDS })
-        .call(() => setAct(0))
-        .to('[data-act="room"]', { opacity: 0, y: -14, duration: FADE, ease: 'power2.inOut' })
-        .to('[data-act="site"]', { opacity: 1, y: 0, duration: FADE, ease: 'power2.out' }, '<0.15')
+      ACTS.forEach((item, index) => {
+        const next = ACTS[(index + 1) % ACTS.length]
+        loop
+          .to({}, { duration: ACT_SECONDS })
+          .call(() => {
+            setAct((index + 1) % ACTS.length)
+            openings[next.key]?.restart()
+          })
+          .to(`[data-act="${item.key}"]`, { opacity: 0, y: -14, duration: FADE, ease: 'power2.inOut' })
+          .to(`[data-act="${next.key}"]`, { opacity: 1, y: 0, duration: FADE, ease: 'power2.out' }, '<0.15')
+      })
 
       // --- Act one: the site keeps working -----------------------------
       // The hammer arm swings from the shoulder.
@@ -139,6 +165,43 @@ export function HeroScene() {
         transformOrigin: 'center bottom',
       })
 
+      // --- Act three: the money crosses the gap -------------------------
+      // Bundles arc from the investor's hand to the contractor's, one after
+      // another. The arc is faked with keyframes rather than a motion path so
+      // this stays on the plugins the page already loads.
+      gsap.fromTo(
+        '[data-note]',
+        { x: 0, y: 0, opacity: 0 },
+        {
+          keyframes: [
+            { opacity: 1, duration: 0.12 },
+            { x: 32, y: -24, duration: 0.46, ease: 'power1.out' },
+            { x: 64, y: 0, duration: 0.46, ease: 'power1.in' },
+            { opacity: 0, duration: 0.22 },
+          ],
+          repeat: -1,
+          repeatDelay: 0.6,
+          stagger: 0.62,
+        },
+      )
+      // The offered hand and the receiving hand, meeting the transfer.
+      gsap.to('[data-offer-arm]', {
+        rotation: -7,
+        svgOrigin: '113 200',
+        duration: 1.1,
+        repeat: -1,
+        yoyo: true,
+        ease: 'sine.inOut',
+      })
+      gsap.to('[data-receive-arm]', {
+        rotation: 7,
+        svgOrigin: '231 200',
+        duration: 1.1,
+        repeat: -1,
+        yoyo: true,
+        ease: 'sine.inOut',
+      })
+
       return () => loop.kill()
     }, root)
 
@@ -175,10 +238,11 @@ export function HeroScene() {
           viewBox="0 0 480 300"
           className="relative h-auto w-full"
           role="img"
-          aria-label="A worker building a floor on site, then the project review where that day's work is read as data"
+          aria-label="A worker building a floor on site, then the project review where that day's work is read as data, then the investor releasing the money that pays for the next floor"
         >
           <SiteAct />
           <RoomAct />
+          <CapitalAct />
         </svg>
       </div>
 
@@ -457,6 +521,161 @@ function RoomAct() {
         <text x={362} y={136} className="fill-muted" fontSize="8.5">Structure phase, Monday</text>
         <text x={362} y={152} className="fill-healthy" fontSize="9" fontWeight="600">Recovers 41 days</text>
         <circle cx={462} cy={88} r={3} className="fill-healthy" />
+      </g>
+    </g>
+  )
+}
+
+/* ==========================================================================
+   Act three — the money
+   The transfer runs left to right across the frame, so it reads as a direction
+   rather than a meeting: capital leaves one hand and arrives as floors on the
+   right. The record card sits top right, where both other acts put it.
+   ========================================================================== */
+
+const TOWER_X = 352
+const TOWER_W = 96
+const FLOOR_H = 16
+
+function CapitalAct() {
+  return (
+    <g data-act="capital">
+      {/* Ground */}
+      <line x1={0} y1={GROUND} x2={480} y2={GROUND} className="stroke-line-strong" strokeWidth="1.5" />
+
+      {/* The investor. Shoulder at (113, 200), briefcase in the far hand. */}
+      <g>
+        <line x1={104} y1={GROUND} x2={98} y2={GROUND - 28} className="stroke-ink" strokeWidth="4.5" strokeLinecap="round" />
+        <line x1={114} y1={GROUND} x2={108} y2={GROUND - 28} className="stroke-ink" strokeWidth="4.5" strokeLinecap="round" />
+
+        {/* The far arm, carrying the case the money came out of */}
+        <line x1={100} y1={GROUND - 54} x2={86} y2={GROUND - 34} className="stroke-ink" strokeWidth="3.8" strokeLinecap="round" />
+        <path d={`M78 ${GROUND - 34} a7 6 0 0 1 14 0`} className="stroke-ink" strokeWidth="1.6" fill="none" />
+        <rect x={74} y={GROUND - 34} width={22} height={16} rx={2} className="fill-ink" />
+        <line x1={74} y1={GROUND - 27} x2={96} y2={GROUND - 27} className="stroke-amber" strokeWidth="1.6" />
+
+        <rect x={99} y={GROUND - 60} width={19} height={34} rx={6} className="fill-ink" />
+        {/* A collar and tie rather than a hi-vis band: the same body, read as
+            the other side of the table */}
+        <path d={`M108.5 ${GROUND - 60} l-5 8 l5 4 l5 -4 z`} className="fill-surface" />
+        <rect x={107} y={GROUND - 52} width={3} height={9} rx={1.5} className="fill-amber" />
+
+        <g data-offer-arm>
+          <line x1={116} y1={GROUND - 56} x2={136} y2={GROUND - 48} className="stroke-ink" strokeWidth="3.8" strokeLinecap="round" />
+        </g>
+        <circle cx={108.5} cy={GROUND - 71} r={9} className="fill-ink" />
+      </g>
+
+      {/* The money crossing. Each bundle starts at the investor's hand. */}
+      <g>
+        {[0, 1, 2].map((index) => (
+          <g key={index} data-note opacity="0">
+            <rect x={138} y={GROUND - 54} width={20} height={12} rx={2} className="fill-amber" />
+            <rect x={142} y={GROUND - 51} width={12} height={6} rx={1} className="fill-amber-deep" opacity="0.55" />
+          </g>
+        ))}
+        {/* The path the money takes, left as a dotted trace */}
+        <path
+          d={`M140 ${GROUND - 48} q32 -34 64 0`}
+          className="stroke-line-strong"
+          strokeWidth="1"
+          strokeDasharray="3 5"
+          fill="none"
+          opacity="0.6"
+        />
+      </g>
+
+      {/* The contractor taking it, drawing under the far arm. Shoulder (231, 200). */}
+      <g>
+        <line x1={236} y1={GROUND} x2={230} y2={GROUND - 28} className="stroke-ink" strokeWidth="4.5" strokeLinecap="round" />
+        <line x1={246} y1={GROUND} x2={240} y2={GROUND - 28} className="stroke-ink" strokeWidth="4.5" strokeLinecap="round" />
+
+        <line x1={246} y1={GROUND - 54} x2={258} y2={GROUND - 34} className="stroke-ink" strokeWidth="3.8" strokeLinecap="round" />
+        {/* The rolled drawing the money is going to be spent on */}
+        <rect
+          x={255}
+          y={GROUND - 48}
+          width={7}
+          height={28}
+          rx={3.5}
+          className="fill-line-strong"
+          transform={`rotate(20 258.5 ${GROUND - 34})`}
+        />
+
+        <rect x={228} y={GROUND - 60} width={19} height={34} rx={6} className="fill-ink" />
+        <rect x={228} y={GROUND - 50} width={19} height={6} className="fill-amber" />
+
+        <g data-receive-arm>
+          <line x1={231} y1={GROUND - 56} x2={208} y2={GROUND - 48} className="stroke-ink" strokeWidth="3.8" strokeLinecap="round" />
+        </g>
+        <circle cx={237.5} cy={GROUND - 71} r={9} className="fill-ink" />
+        <path d={`M225.5 ${GROUND - 74} a12 10.5 0 0 1 24 0 z`} className="fill-amber" />
+        <line x1={222.5} y1={GROUND - 74} x2={252.5} y2={GROUND - 74} className="stroke-amber" strokeWidth="2.8" strokeLinecap="round" />
+      </g>
+
+      {/* What the tranche buys: the envelope is drawn, the funded floors fill */}
+      <g>
+        <rect
+          x={TOWER_X}
+          y={GROUND - FLOOR_H * 4}
+          width={TOWER_W}
+          height={FLOOR_H * 4}
+          className="stroke-line-strong"
+          strokeWidth="1.2"
+          strokeDasharray="4 4"
+          fill="none"
+        />
+        {/* Already paid for */}
+        {[0, 1].map((floor) => (
+          <rect
+            key={floor}
+            x={TOWER_X}
+            y={GROUND - FLOOR_H * (floor + 1)}
+            width={TOWER_W}
+            height={FLOOR_H}
+            className="fill-surface stroke-ink"
+            strokeWidth="1.3"
+          />
+        ))}
+        {/* Paid for by the bundles crossing the frame */}
+        {[2, 3].map((floor) => (
+          <g key={floor} data-funded-floor opacity="0">
+            <rect
+              x={TOWER_X}
+              y={GROUND - FLOOR_H * (floor + 1)}
+              width={TOWER_W}
+              height={FLOOR_H}
+              className="fill-surface stroke-ink"
+              strokeWidth="1.3"
+            />
+            <rect
+              x={TOWER_X}
+              y={GROUND - FLOOR_H * (floor + 1)}
+              width={TOWER_W}
+              height={FLOOR_H}
+              className="fill-amber"
+              opacity="0.22"
+            />
+          </g>
+        ))}
+      </g>
+
+      {/* The tranche, marked once the last floor is covered */}
+      <g data-fund-stamp opacity="0">
+        <rect x={TOWER_X} y={GROUND - FLOOR_H * 4 - 20} width={TOWER_W} height={14} rx={3} className="fill-healthy" opacity="0.16" />
+        <text x={TOWER_X + 9} y={GROUND - FLOOR_H * 4 - 10} className="fill-healthy" fontSize="8" fontWeight="700">
+          TRANCHE FUNDED
+        </text>
+      </g>
+
+      {/* The record the transfer produced */}
+      <g>
+        <rect x={350} y={96} width={120} height={70} rx={5} className="fill-surface stroke-line-strong" strokeWidth="1.2" />
+        <text x={362} y={115} className="fill-subtle" fontSize="8.5" fontWeight="600">FUNDING RELEASE</text>
+        <line x1={362} y1={122} x2={458} y2={122} className="stroke-line" strokeWidth="1" />
+        <text x={362} y={138} className="fill-ink" fontSize="10.5" fontWeight="600">₹4.2 Cr released</text>
+        <text x={362} y={152} className="fill-muted" fontSize="8.5">Tranche 3 · structure phase</text>
+        <circle cx={462} cy={104} r={3} className="fill-amber" />
       </g>
     </g>
   )

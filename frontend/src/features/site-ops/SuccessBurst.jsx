@@ -42,7 +42,7 @@ export function SuccessBurst({ open, title = 'Saved', detail, onDone, duration =
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[95] flex items-center justify-center bg-paper/92 backdrop-blur-sm"
+      className="fixed inset-0 z-[95] flex items-center justify-center bg-paper/90 backdrop-blur-sm"
       role="status"
       aria-live="assertive"
       onClick={onDone}
