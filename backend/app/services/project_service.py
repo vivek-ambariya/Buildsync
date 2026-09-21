@@ -43,6 +43,41 @@ async def can_reach_project(db: AsyncIOMotorDatabase, user: dict, project_id) ->
     ) > 0
 
 
+async def ensure_project_member(
+    db: AsyncIOMotorDatabase, project_id, user_id, *, role: str | None = None
+) -> bool:
+    """Put `user_id` on `project_id`'s team, if that is what lets them see it.
+
+    Assignment and membership are two separate facts, and only membership
+    passes `visibility_filter`. Giving someone work on a site they are not
+    attached to would otherwise create a task they can never open — and a
+    notification pointing at a project that answers 404. So an assignment
+    grants the membership it already implies.
+
+    Admins and project managers are skipped: they see every project
+    regardless, and adding them would fill the site team with people who are
+    not on it. The project's own manager is skipped for the same reason.
+
+    Returns whether the team actually changed.
+    """
+    oid = project_id if isinstance(project_id, ObjectId) else to_object_id(project_id)
+    uid = user_id if isinstance(user_id, ObjectId) else to_object_id(user_id)
+    if not oid or not uid:
+        return False
+
+    if role is None:
+        person = await db[C.users].find_one({"_id": uid}, {"role": 1})
+        role = person.get("role") if person else None
+    if role in (Role.admin.value, Role.project_manager.value):
+        return False
+
+    result = await db[C.projects].update_one(
+        {"_id": oid, "manager_id": {"$ne": uid}},
+        {"$addToSet": {"team_ids": uid}},
+    )
+    return result.modified_count > 0
+
+
 async def list_projects(db: AsyncIOMotorDatabase, user: dict, query: dict | None = None) -> list[dict]:
     mongo_query = {**visibility_filter(user), **(query or {})}
     people = await _people_map(db)

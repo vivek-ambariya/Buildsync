@@ -4,6 +4,7 @@ import { Pencil, Sparkles, Trash2 } from 'lucide-react'
 
 import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
+import { projectPath } from '@/lib/workspaces'
 import { useAsync } from '@/lib/useAsync'
 import { useToast } from '@/lib/toast'
 import { cn } from '@/lib/cn'
@@ -45,7 +46,7 @@ export default function ProjectDetail() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const toast = useToast()
-  const { can } = useAuth()
+  const { can, home } = useAuth()
 
   const { data: project, error, loading, reload } = useAsync(
     () => api.projects.get(projectId),
@@ -84,7 +85,7 @@ export default function ProjectDetail() {
     try {
       await api.projects.remove(projectId)
       toast.success('Project deleted', project.name)
-      navigate('/project-manager/projects')
+      navigate(projectPath(home))
     } catch (err) {
       toast.error('Could not delete that project', err.message)
       setRemoving(false)
@@ -125,7 +126,7 @@ export default function ProjectDetail() {
   return (
     <div ref={scope}>
       <PageHeader
-        backTo="/project-manager/projects"
+        backTo={projectPath(home)}
         backLabel="Projects"
         eyebrow={`${project.code} · ${project.category} · ${project.location}`}
         title={project.name}

@@ -121,7 +121,7 @@ export default function AdminActivity() {
             <p className="truncate text-muted">{row.detail || '—'}</p>
             {row.project_name && (
               <Link
-                to={`/project-manager/projects/${row.project_id}`}
+                to={`/admin/projects/${row.project_id}`}
                 className="truncate text-micro text-subtle transition-colors hover:text-ink"
               >
                 {row.project_name}

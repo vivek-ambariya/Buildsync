@@ -6,12 +6,17 @@ from app.core.deps import (
     forbidden,
     require_permission,
 )
+from app.core.workspaces import task_link_for
 from app.core.permissions import P, has_permission
 from app.db.mongodb import Collections as C
 from app.models.common import Role, TaskStatus, serialize, to_object_id, utcnow
 from app.schemas.task import TaskCreate, TaskUpdate
 from app.services.activity_service import log_activity, notify
-from app.services.project_service import recalculate_progress, visibility_filter
+from app.services.project_service import (
+    ensure_project_member,
+    recalculate_progress,
+    visibility_filter,
+)
 from app.utils.dates import to_datetime
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -40,6 +45,29 @@ def _decorate(task: dict, people: dict, projects: dict) -> dict:
     deadline = to_datetime(task.get("deadline"))
     task["overdue"] = bool(deadline and deadline < utcnow() and task.get("status") != "completed")
     return task
+
+
+async def _hand_over(db, project: dict, assignee_id, task_title: str, *,
+                     title: str, due=None) -> None:
+    """Give `assignee_id` the work — and everything needed to reach it.
+
+    Being handed a task is two things at once: a notification, and access to
+    the site it is on. Sending the first without granting the second is what
+    produced a task list that stayed empty after an admin had filled it.
+    """
+    person = await db[C.users].find_one({"_id": assignee_id}, {"role": 1}) or {}
+    role = person.get("role")
+    await ensure_project_member(db, project.get("_id"), assignee_id, role=role)
+    await notify(
+        db,
+        user_ids=[str(assignee_id)],
+        title=title,
+        body=(f"{task_title} on {project.get('name', 'your site')}"
+              + (f", due {due}." if due else ".")),
+        tone="info",
+        link=task_link_for(role, str(project.get("_id")) if project.get("_id") else None),
+        project_id=str(project["_id"]) if project.get("_id") else None,
+    )
 
 
 @router.get("")
@@ -91,10 +119,8 @@ async def create(payload: TaskCreate, db: Database, user: CurrentUser):
     await log_activity(db, actor=user, action="created task", entity_type="task",
                        entity_id=str(result.inserted_id), project_id=payload.project_id, detail=payload.title)
     if doc["assignee_id"]:
-        await notify(db, user_ids=[str(doc["assignee_id"])], title="New task assigned",
-                     body=f"{payload.title} on {project['name']}, due {payload.deadline}.",
-                     tone="info", link=f"/app/projects/{payload.project_id}?tab=tasks",
-                     project_id=payload.project_id)
+        await _hand_over(db, project, doc["assignee_id"], payload.title,
+                         title="New task assigned", due=payload.deadline)
 
     people = await _people(db)
     created = serialize(await db[C.tasks].find_one({"_id": result.inserted_id}))
@@ -137,6 +163,17 @@ async def update(task_id: str, payload: TaskUpdate, db: Database, user: CurrentU
 
     await db[C.tasks].update_one({"_id": oid}, {"$set": changes})
     project_id = str(existing["project_id"])
+
+    # Reassignment moves the work, so it has to move the access too —
+    # otherwise the new owner inherits a task they cannot open.
+    new_assignee = changes.get("assignee_id")
+    if new_assignee and new_assignee != existing.get("assignee_id"):
+        project_doc = await db[C.projects].find_one({"_id": existing["project_id"]}, {"name": 1})
+        await _hand_over(db, project_doc or {}, new_assignee,
+                         changes.get("title") or existing.get("title", ""),
+                         title="Task assigned to you",
+                         due=(changes.get("deadline") or existing.get("deadline")))
+
     await recalculate_progress(db, project_id)
     await log_activity(db, actor=user, action="updated task", entity_type="task",
                        entity_id=task_id, project_id=project_id, detail=existing.get("title", ""))

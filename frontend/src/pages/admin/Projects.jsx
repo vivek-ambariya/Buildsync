@@ -208,7 +208,7 @@ export default function AdminProjects() {
           <RowMenu
             label={`Actions for ${row.name}`}
             items={[
-              { label: 'Open project', icon: ExternalLink, onSelect: () => navigate(`/project-manager/projects/${row.id}`) },
+              { label: 'Open project', icon: ExternalLink, onSelect: () => navigate(`/admin/projects/${row.id}`) },
               { label: 'Edit project', icon: Pencil, onSelect: () => { setEditing(row); setFormOpen(true) } },
               { label: 'Assign manager', icon: UserCog, onSelect: () => setAssigning(row) },
               {

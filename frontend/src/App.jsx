@@ -101,6 +101,17 @@ function PortfolioRoutes() {
 }
 
 /**
+ * The field shell has never had a project detail page, but notifications
+ * written before that was noticed still point at one. Send those to the task
+ * list rather than to a dead end.
+ */
+function FieldProjectRedirect() {
+  const { home } = useAuth()
+  const { search } = useLocation()
+  return <Navigate to={`${home}/tasks${search}`} replace />
+}
+
+/**
  * The field pages. A contractor shares the shell but not the job: the daily
  * report and the headcount belong to whoever runs the site, so those routes
  * are only mounted for the site manager.
@@ -117,6 +128,8 @@ function FieldRoutes({ daily }) {
       <Route path="documents" element={<SiteDocuments />} />
       <Route path="notifications" element={<SiteNotifications />} />
       <Route path="profile" element={<SiteProfile />} />
+      <Route path="projects" element={<FieldProjectRedirect />} />
+      <Route path="projects/:projectId" element={<FieldProjectRedirect />} />
       {daily && <Route path="today" element={<TodaysWork />} />}
       {daily && <Route path="reports" element={<DailyReports />} />}
       <Route path="*" element={<NotFound />} />
@@ -186,6 +199,10 @@ export default function App() {
           <Route index element={<AdminOverview />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="projects" element={<AdminProjects />} />
+          {/* An admin runs every site, so a link to one has to open here.
+              Without this the admin shell's own "Open project" action, and
+              every notification that names a project, ended on a refusal. */}
+          <Route path="projects/:projectId" element={<ProjectDetail />} />
           <Route path="tasks" element={<AdminTasks />} />
           <Route path="materials" element={<AdminMaterials />} />
           <Route path="expenses" element={<AdminExpenses />} />

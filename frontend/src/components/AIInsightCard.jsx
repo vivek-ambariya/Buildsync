@@ -5,6 +5,8 @@ import { Link } from 'react-router-dom'
 import { cn } from '@/lib/cn'
 import { api } from '@/lib/api'
 import { useToast } from '@/lib/toast'
+import { useAuth } from '@/lib/auth'
+import { projectPath } from '@/lib/workspaces'
 import { Panel } from './ui/Panel'
 
 const KIND_ICON = {
@@ -27,6 +29,7 @@ const SEVERITY = {
  */
 export function AIInsightCard({ insight, onAcknowledged, compact = false }) {
   const toast = useToast()
+  const { home } = useAuth()
   const [acknowledging, setAcknowledging] = useState(false)
   const severity = SEVERITY[insight.severity] || SEVERITY.low
   const Icon = KIND_ICON[insight.kind] || AlertTriangle
@@ -55,7 +58,7 @@ export function AIInsightCard({ insight, onAcknowledged, compact = false }) {
             <div className="flex items-center gap-2">
               <Icon size={13} className={cn('shrink-0', severity.rule)} strokeWidth={2} />
               <Link
-                to={`/project-manager/projects/${insight.project_id}`}
+                to={projectPath(home, insight.project_id)}
                 className="truncate text-tiny font-medium text-muted transition-colors hover:text-ink"
               >
                 {insight.project_name}

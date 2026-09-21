@@ -299,7 +299,7 @@ export default function AdminOverview() {
                   {attention.map((row, index) => (
                     <li key={row.id}>
                       <Link
-                        to={`/project-manager/projects/${row.id}`}
+                        to={`/admin/projects/${row.id}`}
                         className="block px-5 py-3.5 transition-colors duration-150 hover:bg-raised"
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">

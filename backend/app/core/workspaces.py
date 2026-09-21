@@ -124,6 +124,37 @@ def authorized_roles(user: dict) -> list[str]:
     return [primary] if primary in _ROLE_TO_SLUG else []
 
 
+def task_link_for(role: str | None, project_id: str | None = None) -> str:
+    """Where a notification about a task should take this person.
+
+    Each workspace mounts its own screens, and only the project-manager shell
+    has a project detail page — so one `/app/projects/{id}` link for everybody
+    is a dead end for the two roles most likely to be handed a task. The
+    people on the ground get their task list instead.
+    """
+    slug = slug_for_role(role)
+    if not slug:
+        return "/login"
+    if slug == "project-manager" and project_id:
+        return f"/project-manager/projects/{project_id}?tab=tasks"
+    return f"{WORKSPACES[slug]['home']}/tasks"
+
+
+def people_link_for(role: str | None) -> str | None:
+    """Where this workspace lists people, or `None` if it does not.
+
+    The field shells have no people directory — a contractor searching a name
+    has nowhere to be sent — so callers drop the result rather than link it
+    somewhere that only looks like an answer.
+    """
+    slug = slug_for_role(role)
+    if slug == "admin":
+        return "/admin/users"
+    if slug == "project-manager":
+        return "/project-manager/team"
+    return None
+
+
 def public_workspaces() -> list[dict]:
     """The chooser's contents. Public: it names no account and grants nothing."""
     return [

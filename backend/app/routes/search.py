@@ -4,6 +4,7 @@ import re
 from fastapi import APIRouter, Query
 
 from app.core.deps import CurrentUser, Database
+from app.core.workspaces import people_link_for
 from app.db.mongodb import Collections as C
 from app.models.common import serialize, to_object_id
 from app.services.project_service import list_projects
@@ -43,13 +44,16 @@ async def search(db: Database, user: CurrentUser, q: str = Query(min_length=1, m
     await collect(C.documents, "name", "document", "doc_type", lambda i: f"/app/documents?q={i['name']}")
     await collect(C.expenses, "title", "expense", "vendor", lambda i: f"/app/projects/{i['project_id']}?tab=expenses")
 
-    cursor = db[C.users].find({"name": pattern, "active": True}, {"password_hash": 0}).limit(4)
-    async for doc in cursor:
-        person = serialize(doc)
-        results.append({
-            "type": "person", "id": person["id"], "title": person["name"],
-            "subtitle": person.get("title") or person["role"].replace("_", " ").title(),
-            "href": "/app/team",
-        })
+    # Only the shells that actually have a people directory get people back.
+    people_href = people_link_for(user.get("role"))
+    if people_href:
+        cursor = db[C.users].find({"name": pattern, "active": True}, {"password_hash": 0}).limit(4)
+        async for doc in cursor:
+            person = serialize(doc)
+            results.append({
+                "type": "person", "id": person["id"], "title": person["name"],
+                "subtitle": person.get("title") or person["role"].replace("_", " ").title(),
+                "href": people_href,
+            })
 
     return {"query": q, "results": results[:24]}

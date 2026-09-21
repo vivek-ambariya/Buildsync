@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 
 import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
+import { projectPath } from '@/lib/workspaces'
 import { useAsync } from '@/lib/useAsync'
 import { useToast } from '@/lib/toast'
 import { cn } from '@/lib/cn'
@@ -23,7 +24,7 @@ import { EmptyState, ErrorState } from '@/components/ui/States'
  * used, and what went wrong.
  */
 export function SiteUpdateFeed({ projectId, projects, showProject = true }) {
-  const { can } = useAuth()
+  const { can, home } = useAuth()
   const { data, error, loading, reload } = useAsync(
     () => api.siteUpdates.list(projectId ? { project_id: projectId, limit: 60 } : { limit: 60 }),
     [projectId],
@@ -158,7 +159,7 @@ function UpdateCard({ update, showProject }) {
                   <>
                     {' on '}
                     <Link
-                      to={`/project-manager/projects/${update.project_id}`}
+                      to={projectPath(home, update.project_id)}
                       className="underline decoration-line-strong underline-offset-[3px] transition-colors hover:decoration-ink"
                     >
                       {update.project_name}

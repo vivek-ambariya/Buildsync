@@ -4,12 +4,15 @@ import { CalendarDays, MapPin } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { daysUntil, formatDate, formatINR, formatPercent } from '@/lib/format'
 import { toneForVariance } from '@/lib/tone'
+import { useAuth } from '@/lib/auth'
+import { projectPath } from '@/lib/workspaces'
 import { Panel } from './ui/Panel'
 import { ProgressBar } from './ui/ProgressBar'
 import { StatusBadge } from './ui/StatusBadge'
 import { AvatarStack } from './ui/Avatar'
 
 export function ProjectCard({ project, delay = 0 }) {
+  const { home } = useAuth()
   const schedule = project.metrics?.schedule
   const budget = project.metrics?.budget
   const variance = schedule?.variance ?? 0
@@ -18,7 +21,7 @@ export function ProjectCard({ project, delay = 0 }) {
 
   return (
     <Panel interactive className={cn('rule-left group', tone.rule)}>
-      <Link to={`/project-manager/projects/${project.id}`} className="block p-5 pl-6">
+      <Link to={projectPath(home, project.id)} className="block p-5 pl-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-tiny text-muted">

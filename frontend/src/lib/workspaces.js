@@ -184,6 +184,27 @@ export const homeForRole = (role) => BY_ROLE[role]?.base || '/login'
 export const workspacesFor = (roles = []) =>
   WORKSPACE_ORDER.map((slug) => WORKSPACES[slug]).filter((w) => roles.includes(w.role))
 
+const BY_BASE = Object.fromEntries(
+  WORKSPACE_ORDER.map((slug) => [WORKSPACES[slug].base, WORKSPACES[slug]]),
+)
+
+/**
+ * Where a link to a project goes inside the workspace `base`.
+ *
+ * Only the portfolio and admin shells mount a project page. Hardcoding the
+ * project-manager path meant an admin following a project link anywhere —
+ * a notification, an insight, the activity log — was told access was denied
+ * to a project they in fact own. The field shells have no project page at
+ * all, so a link there resolves to the task list, which is what someone on
+ * site wanted from it anyway.
+ */
+export const projectPath = (base, projectId) => {
+  const ws = BY_BASE[base]
+  if (!ws) return '/login'
+  if (ws.shell === 'field') return `${base}/tasks`
+  return projectId ? `${base}/projects/${projectId}` : `${base}/projects`
+}
+
 /** Build a path inside a workspace: `wsPath('/contractor', 'tasks')`. */
 export const wsPath = (base, path = '') =>
   path ? `${base}/${String(path).replace(/^\//, '')}` : base

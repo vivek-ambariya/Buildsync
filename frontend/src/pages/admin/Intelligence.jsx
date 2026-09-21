@@ -277,7 +277,7 @@ function RiskCard({ row }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <Link
-            to={`/project-manager/projects/${row.id}`}
+            to={`/admin/projects/${row.id}`}
             className="block truncate font-display text-h4 text-ink transition-colors hover:text-amber-deep"
           >
             {row.name}
