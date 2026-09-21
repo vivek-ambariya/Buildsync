@@ -183,18 +183,12 @@ export default function Landing() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-2">
-            {status === 'authenticated' ? (
-              <ButtonLink to={home} variant="primary">
-                Open dashboard
-                <ArrowRight size={15} />
-              </ButtonLink>
-            ) : (
-              <Button variant="primary" onClick={openLogin}>
-                Go visit
-                <ArrowRight size={15} />
-              </Button>
-            )}
+            <Button variant="primary" onClick={openLogin}>
+              Go visit
+              <ArrowRight size={15} />
+            </Button>
           </div>
+
         </div>
       </header>
 

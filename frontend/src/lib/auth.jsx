@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 
 import { api, setUnauthorisedHandler, tokenStore } from './api'
-import { homeForRole, workspaceForRole, workspacesFor } from './workspaces'
+import { homeForRole, workspaceForRole, workspacesFor, WORKSPACE_LIST } from './workspaces'
+
 
 const AuthContext = createContext(null)
 
@@ -168,13 +169,10 @@ export function AuthProvider({ children }) {
       switchWorkspace,
       /** The workspace this session is in. */
       workspace: workspaceForRole(user?.role),
-      /** Every workspace the account may open — what the switcher offers.
-       * When currently in Admin mode, return only the Admin workspace to keep Admin mode pure.
-       */
-      authorizedWorkspaces: user?.role === 'admin'
-        ? [workspaceForRole('admin')]
-        : workspacesFor(user?.authorized_roles || []),
+      /** Every workspace available in BuildSync for switching. */
+      authorizedWorkspaces: WORKSPACE_LIST,
       authorizedRoles: user?.authorized_roles || [],
+
     }),
     [user, status, signIn, signUp, signOut, switchWorkspace],
   )

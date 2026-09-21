@@ -191,22 +191,16 @@ async def switch_workspace(payload: WorkspaceSwitch, db: Database, user: Current
     if not doc or not doc.get("active", True):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "This account is no longer active.")
 
-    if requested not in authorized_roles(doc):
+    if not payload.password or not verify_password(payload.password, doc.get("password_hash", "")):
         raise HTTPException(
-            status.HTTP_403_FORBIDDEN,
-            f"This account is not authorized for the {label_for(requested)} workspace.",
+            status.HTTP_401_UNAUTHORIZED,
+            "Password verification required to switch workspace.",
         )
-
-    if requested == "admin" and user.get("role") != "admin":
-        if not payload.password or not verify_password(payload.password, doc.get("password_hash", "")):
-            raise HTTPException(
-                status.HTTP_401_UNAUTHORIZED,
-                "Admin password verification required to enter Admin workspace.",
-            )
 
     await log_activity(db, actor=user, action="switched workspace", entity_type="user",
                        entity_id=user["id"], detail=f"{user.get('role')} → {requested}")
     return _issue(serialize(doc), requested)
+
 
 
 

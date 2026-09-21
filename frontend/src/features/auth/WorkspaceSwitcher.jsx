@@ -12,54 +12,36 @@ import { Field } from '@/components/ui/Form'
 /**
  * Moves an account between the workspaces it holds.
  *
- * Switching to Admin from another workspace requires entering the Admin password.
- * When in Admin mode, non-admin workspaces are hidden to keep Admin mode pure.
+ * Switching to any workspace requires entering the account password.
  */
 export function WorkspaceSwitcher({ onDone, className }) {
-  const { workspace, authorizedWorkspaces, switchWorkspace, signIn, user } = useAuth()
+  const { workspace, authorizedWorkspaces, switchWorkspace, user } = useAuth()
   const navigate = useNavigate()
   const toast = useToast()
-  const [switching, setSwitching] = useState(null)
-  const [adminModalOpen, setAdminModalOpen] = useState(false)
+  const [targetWorkspace, setTargetWorkspace] = useState(null)
   const [password, setPassword] = useState('')
   const [verifying, setVerifying] = useState(false)
   const [error, setError] = useState('')
 
-  if (authorizedWorkspaces.length < 2) return null
+  if (!authorizedWorkspaces || authorizedWorkspaces.length < 2) return null
 
-  const go = async (target) => {
+  const openPasswordPrompt = (target) => {
     if (target.slug === workspace?.slug) return onDone?.()
-
-    if (target.slug === 'admin' && workspace?.slug !== 'admin') {
-      setPassword('')
-      setError('')
-      setAdminModalOpen(true)
-      return
-    }
-
-    setSwitching(target.slug)
-    try {
-      const u = await switchWorkspace(target.slug)
-      toast.success(`Switched to ${target.label}.`, u?.name)
-      navigate(target.base, { replace: true })
-      onDone?.()
-    } catch (err) {
-      toast.error(err.message)
-    } finally {
-      setSwitching(null)
-    }
+    setTargetWorkspace(target)
+    setPassword('')
+    setError('')
   }
 
-  const handleAdminVerify = async (e) => {
+  const handleVerify = async (e) => {
     e.preventDefault()
-    if (!password) return
+    if (!password || !targetWorkspace) return
     setVerifying(true)
     setError('')
     try {
-      const u = await signIn(user.email, password, 'admin')
-      toast.success('Switched to Admin workspace.', u?.name)
-      setAdminModalOpen(false)
-      navigate('/admin', { replace: true })
+      const u = await switchWorkspace(targetWorkspace.slug, password)
+      toast.success(`Switched to ${targetWorkspace.label} workspace.`, u?.name)
+      setTargetWorkspace(null)
+      navigate(targetWorkspace.base, { replace: true })
       onDone?.()
     } catch (err) {
       setError(err.message || 'Incorrect password.')
@@ -78,8 +60,8 @@ export function WorkspaceSwitcher({ onDone, className }) {
             <button
               key={target.slug}
               type="button"
-              disabled={Boolean(switching)}
-              onClick={() => go(target)}
+              disabled={Boolean(verifying)}
+              onClick={() => openPasswordPrompt(target)}
               className={cn(
                 'flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-base transition-colors duration-150',
                 'disabled:opacity-60',
@@ -88,29 +70,25 @@ export function WorkspaceSwitcher({ onDone, className }) {
             >
               <target.icon size={14} className={cn('shrink-0', active && 'text-amber-deep')} />
               <span className="flex-1 truncate">{target.label}</span>
-              {switching === target.slug ? (
-                <Loader2 size={13} className="shrink-0 animate-spin text-subtle" />
-              ) : active ? (
-                <Check size={13} className="shrink-0 text-amber-deep" />
-              ) : null}
+              {active ? <Check size={13} className="shrink-0 text-amber-deep" /> : null}
             </button>
           )
         })}
       </div>
 
       <Modal
-        open={adminModalOpen}
-        onClose={() => setAdminModalOpen(false)}
-        title="Admin Authentication Required"
-        description="Enter your admin password to switch to the Admin workspace."
+        open={Boolean(targetWorkspace)}
+        onClose={() => setTargetWorkspace(null)}
+        title={`Switch to ${targetWorkspace?.label || ''} Workspace`}
+        description={`Enter your password to access the ${targetWorkspace?.label || ''} workspace.`}
       >
-        <form onSubmit={handleAdminVerify} className="space-y-4">
+        <form onSubmit={handleVerify} className="space-y-4">
           {error && (
             <div className="rounded-control border border-critical/30 bg-critical-wash px-3 py-2 text-tiny font-medium text-critical">
               {error}
             </div>
           )}
-          <Field label="Admin Password" required>
+          <Field label="Account Password" required>
             <input
               type="password"
               autoFocus
@@ -122,11 +100,11 @@ export function WorkspaceSwitcher({ onDone, className }) {
             />
           </Field>
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="ghost" onClick={() => setAdminModalOpen(false)}>
+            <Button type="button" variant="ghost" onClick={() => setTargetWorkspace(null)}>
               Cancel
             </Button>
             <Button type="submit" variant="primary" loading={verifying}>
-              Confirm & Enter Admin
+              Confirm & Switch
             </Button>
           </div>
         </form>

@@ -12,10 +12,10 @@ import { Field } from '@/components/ui/Form'
 /**
  * Keeps a workspace's routes to the people who hold it.
  *
- * If accessing Admin workspace while in another workspace, prompts for the Admin password.
+ * If accessing a workspace while in another workspace session, prompts for password verification.
  */
 export function RequireWorkspace({ slug }) {
-  const { status, authorizedRoles, authorizedWorkspaces, workspace: currentWorkspace, home, signOut, signIn, user } = useAuth()
+  const { status, authorizedRoles, authorizedWorkspaces, workspace: currentWorkspace, home, signOut, switchWorkspace, user } = useAuth()
   const location = useLocation()
   const targetWorkspace = workspaceForSlug(slug)
 
@@ -68,15 +68,15 @@ export function RequireWorkspace({ slug }) {
     )
   }
 
-  // If accessing admin workspace while in another workspace, prompt for admin password
-  if (slug === 'admin' && currentWorkspace?.slug !== 'admin') {
+  // If accessing a workspace while in another workspace session, prompt for password
+  if (currentWorkspace?.slug !== slug) {
     const handleVerify = async (e) => {
       e.preventDefault()
       if (!password) return
       setVerifying(true)
       setError('')
       try {
-        await signIn(user.email, password, 'admin')
+        await switchWorkspace(slug, password)
       } catch (err) {
         setError(err.message || 'Incorrect password.')
       } finally {
@@ -90,9 +90,9 @@ export function RequireWorkspace({ slug }) {
           <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-panel border border-amber/30 bg-amber-wash text-amber-deep">
             <ShieldCheck size={20} strokeWidth={1.75} />
           </div>
-          <h1 className="font-display text-h3 text-ink">Admin Password Required</h1>
+          <h1 className="font-display text-h3 text-ink">Password Required</h1>
           <p className="mt-2 text-base leading-relaxed text-muted">
-            Enter your admin password to switch to the Admin workspace.
+            Enter your account password to enter the {targetWorkspace?.label || slug} workspace.
           </p>
 
           <form onSubmit={handleVerify} className="mt-6 space-y-4 text-left">
@@ -101,7 +101,7 @@ export function RequireWorkspace({ slug }) {
                 {error}
               </div>
             )}
-            <Field label="Admin Password" required>
+            <Field label="Password" required>
               <input
                 type="password"
                 autoFocus
@@ -114,7 +114,7 @@ export function RequireWorkspace({ slug }) {
             </Field>
             <div className="flex flex-col gap-2 pt-2">
               <Button type="submit" variant="primary" loading={verifying} className="w-full">
-                Verify & Enter Admin
+                Verify & Access {targetWorkspace?.label || 'Workspace'}
               </Button>
               <ButtonLink to={home} variant="ghost" size="sm" className="w-full text-center">
                 Return to {currentWorkspace?.label || 'workspace'}
