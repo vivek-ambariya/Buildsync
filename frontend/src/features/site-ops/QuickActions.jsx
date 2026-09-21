@@ -25,17 +25,24 @@ const ACTIONS = [
   { key: 'progress', label: 'Update progress', icon: Gauge, accent: true },
   { key: 'photos', label: 'Upload site photos', icon: Camera, permission: 'uploadSitePhotos' },
   { key: 'issue', label: 'Report issue', icon: TriangleAlert, tone: 'critical', permission: 'reportIssues' },
-  { key: 'report', label: 'Daily site report', icon: ClipboardList },
+  // The daily report is the site manager's account of the whole site, so it
+  // is offered in their workspace only — a contractor records their own
+  // progress instead.
+  { key: 'report', label: 'Daily site report', icon: ClipboardList, workspaces: ['site-manager'] },
   { key: 'material', label: 'Update material', icon: Package, permission: 'manageMaterials' },
   { key: 'workforce', label: 'Update workforce', icon: HardHat, permission: 'recordWorkforce' },
 ]
 
 export function QuickActions({ className, onChanged, columns = 2 }) {
-  const { can } = useAuth()
+  const { can, workspace } = useAuth()
   const [sheet, setSheet] = useState(null)
   const close = () => setSheet(null)
 
-  const visible = ACTIONS.filter((action) => !action.permission || can(action.permission))
+  const visible = ACTIONS.filter(
+    (action) =>
+      (!action.permission || can(action.permission)) &&
+      (!action.workspaces || action.workspaces.includes(workspace?.slug)),
+  )
 
   return (
     <>

@@ -36,9 +36,15 @@ export default function SiteMaterials() {
     () => (projectId ? api.site.materials(projectId) : Promise.resolve([])),
     [projectId],
   )
+  // A contractor sees stock but not the reorder queue, so asking for it would
+  // only produce a refusal. The permission decides whether to ask at all.
+  const canSeeRequests = can('requestMaterials')
   const { data: requests, reload: reloadRequests } = useAsync(
-    () => (projectId ? api.site.materialRequests(projectId) : Promise.resolve([])),
-    [projectId],
+    () =>
+      projectId && canSeeRequests
+        ? api.site.materialRequests(projectId)
+        : Promise.resolve([]),
+    [projectId, canSeeRequests],
   )
   const scope = useEnter([loading, Boolean(data)])
 

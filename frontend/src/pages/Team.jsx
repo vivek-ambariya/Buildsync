@@ -53,7 +53,7 @@ export default function Team() {
       />
 
       {loading && !data ? (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <PanelSkeleton rows={3} />
           <PanelSkeleton rows={3} />
         </div>
@@ -62,7 +62,7 @@ export default function Team() {
           <EmptyState icon={Users} title="No team members yet" description="People appear here once accounts are created." />
         </Panel>
       ) : (
-        <div className="grid items-start gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
           {groups.map((role) => (
             <Panel key={role} data-enter>
               <PanelHeader
