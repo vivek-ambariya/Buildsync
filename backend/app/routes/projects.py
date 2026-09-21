@@ -6,7 +6,12 @@ from app.db.mongodb import Collections as C
 from app.models.common import ProjectStatus, Role, serialize, to_object_id, utcnow
 from app.schemas.project import ProjectCreate, ProjectUpdate
 from app.services.activity_service import broadcast_ids, log_activity, notify, recent_activity
-from app.services.project_service import get_project, list_projects, project_metrics
+from app.services.project_service import (
+    can_reach_project,
+    get_project,
+    list_projects,
+    project_metrics,
+)
 from app.utils.dates import to_datetime
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -91,8 +96,11 @@ async def create(payload: ProjectCreate, db: Database, user: CurrentUser):
 @router.patch("/{project_id}", dependencies=[can_edit])
 async def update(project_id: str, payload: ProjectUpdate, db: Database, user: CurrentUser):
     oid = to_object_id(project_id)
-    if not oid:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "That project does not exist.")
+    # Holding `projects.edit` says which *actions* are yours, not which rows.
+    # Checking only on the way out let the write land and refused the reply,
+    # which changed a project the caller was never allowed to open.
+    if not oid or not await can_reach_project(db, user, oid):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "That project does not exist, or you cannot see it.")
 
     changes = {k: v for k, v in payload.model_dump(exclude_unset=True).items() if v is not None}
     for field in ("start_date", "end_date"):
@@ -124,6 +132,8 @@ async def update(project_id: str, payload: ProjectUpdate, db: Database, user: Cu
 @router.delete("/{project_id}", dependencies=[can_delete])
 async def remove(project_id: str, db: Database, user: CurrentUser):
     oid = to_object_id(project_id)
+    if not oid or not await can_reach_project(db, user, oid):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "That project does not exist, or you cannot see it.")
     project = await db[C.projects].find_one({"_id": oid})
     if not project:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "That project does not exist.")

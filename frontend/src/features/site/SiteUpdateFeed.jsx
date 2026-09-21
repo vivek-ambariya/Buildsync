@@ -122,7 +122,7 @@ export function SiteUpdateFeed({ projectId, projects, showProject = true }) {
               </div>
               <div className="space-y-3">
                 {updates.map((update) => (
-                  <UpdateCard key={update.id} update={update} showProject={showProject} />
+                  <UpdateCard key={update.id} update={update} showProject={showProject} home={home} />
                 ))}
               </div>
             </section>
@@ -144,7 +144,7 @@ export function SiteUpdateFeed({ projectId, projects, showProject = true }) {
   )
 }
 
-function UpdateCard({ update, showProject }) {
+function UpdateCard({ update, showProject, home }) {
   const hasIssue = Boolean((update.issues || '').trim())
   return (
     <Panel interactive className={cn(hasIssue && 'rule-left text-amber')}>
