@@ -8,8 +8,7 @@
    The palette is a concrete-and-signage one: olive-cast near-black, cool
    off-white, and amber used only where it carries meaning.
    ========================================================================== */
-:root,
-:root[data-theme='light'] {
+:root {
   --ink: 18 19 15;
   --paper: 247 247 245;
   --surface: 255 255 255;
@@ -35,34 +34,6 @@
   --shadow: 18 19 15;
   --grid-line: 18 19 15;
   color-scheme: light;
-}
-
-:root[data-theme='dark'] {
-  --ink: 240 240 235;
-  --paper: 16 17 14;
-  --surface: 25 26 22;
-  --raised: 33 35 29;
-  --line: 45 47 40;
-  --line-strong: 65 68 58;
-  --muted: 151 154 144;
-  --subtle: 117 120 111;
-
-  --amber: 233 176 43;
-  --amber-deep: 245 202 98;
-  --amber-wash: 48 39 14;
-
-  --healthy: 98 183 133;
-  --healthy-wash: 23 44 32;
-  --warning: 226 172 56;
-  --warning-wash: 49 38 12;
-  --critical: 226 116 98;
-  --critical-wash: 53 28 24;
-  --info: 127 172 226;
-  --info-wash: 22 35 51;
-
-  --shadow: 0 0 0;
-  --grid-line: 240 240 235;
-  color-scheme: dark;
 }
 
 @layer base {
@@ -273,11 +244,10 @@
 /* ==========================================================================
    Print
    A report offers a Print button, so the printed page has to be the report
-   and nothing else: no navigation, no controls, no dark theme burning ink.
+   and nothing else: no navigation and no controls.
    ========================================================================== */
 @media print {
-  :root,
-  :root[data-theme='dark'] {
+  :root {
     --ink: 18 19 15;
     --paper: 255 255 255;
     --surface: 255 255 255;

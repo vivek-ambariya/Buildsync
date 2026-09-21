@@ -1,11 +1,10 @@
 import { useLayoutEffect, useRef } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, ShieldCheck, X } from 'lucide-react'
+import { ShieldCheck, X } from 'lucide-react'
 
 import { cn } from '@/lib/cn'
 import { gsap, prefersReducedMotion } from '@/animations'
 import { LogoLink } from '@/components/LogoLink'
-import { useAuth } from '@/lib/auth'
 import { WORKSPACES } from '@/lib/workspaces'
 
 /**
@@ -15,12 +14,10 @@ import { WORKSPACES } from '@/lib/workspaces'
  */
 export function AdminSidebar({ mobileOpen, onClose }) {
   const location = useLocation()
-  const { authorizedWorkspaces } = useAuth()
   const SECTIONS = WORKSPACES.admin.nav(WORKSPACES.admin.base)
-  // Only offered when the account actually holds a second workspace.
-  const other = authorizedWorkspaces.find((w) => w.slug !== 'admin')
   const listRef = useRef(null)
   const indicatorRef = useRef(null)
+
 
   // One marker slides to the active row, so moving around the control centre
   // reads as a single object travelling rather than a colour reappearing.
@@ -115,19 +112,8 @@ export function AdminSidebar({ mobileOpen, onClose }) {
             </div>
           ))}
         </nav>
-
-        {other && (
-          <div className="shrink-0 border-t border-line px-2.5 py-3">
-            <NavLink
-              to={other.base}
-              className="flex items-center gap-2.5 rounded-control px-2.5 py-2 text-base text-muted transition-colors hover:bg-raised hover:text-ink"
-            >
-              <LayoutDashboard size={15} strokeWidth={1.9} />
-              {other.label} workspace
-            </NavLink>
-          </div>
-        )}
       </aside>
+
     </>
   )
 }

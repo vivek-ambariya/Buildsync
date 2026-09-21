@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Activity, Bell, LogOut, Menu, Moon, Search, Settings, Sun } from 'lucide-react'
+import { Activity, Bell, LogOut, Menu, Search, Settings } from 'lucide-react'
 
 import { cn } from '@/lib/cn'
 import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
-import { useTheme } from '@/lib/theme'
 import { Avatar } from '@/components/ui/Avatar'
 import { NotificationPanel } from '@/components/NotificationPanel'
 import { WorkspaceSwitcher } from '@/features/auth/WorkspaceSwitcher'
@@ -19,7 +18,6 @@ import { WorkspaceSwitcher } from '@/features/auth/WorkspaceSwitcher'
  */
 export function AdminTopbar({ onMenu, onSearch }) {
   const { user, signOut, roleLabel } = useAuth()
-  const { theme, toggle } = useTheme()
   const navigate = useNavigate()
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -94,15 +92,6 @@ export function AdminTopbar({ onMenu, onSearch }) {
       </button>
 
       <div className="ml-auto flex items-center gap-1">
-        <button
-          type="button"
-          onClick={toggle}
-          className="rounded-control p-2 text-muted transition-colors hover:bg-raised hover:text-ink"
-          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-        >
-          {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
-        </button>
-
         <div className="relative">
           <button
             type="button"

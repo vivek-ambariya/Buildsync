@@ -1,4 +1,12 @@
-"""Number formatting shared by the report and assistant text generators."""
+"""Presentation helpers shared by the report and assistant text generators."""
+
+
+def initials(name: str) -> str:
+    """First and last initial, for the avatar shown when there is no photo."""
+    parts = [p for p in (name or "").split() if p]
+    if not parts:
+        return "?"
+    return (parts[0][0] + (parts[-1][0] if len(parts) > 1 else "")).upper()
 
 
 def format_inr(amount: float) -> str:

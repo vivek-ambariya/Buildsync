@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 
-import { useTheme } from '@/lib/theme'
-
 const VARIABLES = [
   'ink', 'muted', 'subtle', 'line', 'line-strong', 'surface', 'raised',
   'amber', 'amber-deep', 'healthy', 'warning', 'critical', 'info',
@@ -20,17 +18,17 @@ const read = () => {
 
 /**
  * Charts read their colours from the same CSS variables as the rest of the
- * interface, so a theme change moves everything together.
+ * interface, so the palette is defined in one place for both.
  */
 export function useChartTheme() {
-  const { theme } = useTheme()
   const [colors, setColors] = useState(read)
 
   useEffect(() => {
-    // Wait a frame so the variables have been applied to <html> first.
+    // The first read can run before the stylesheet has been applied, so take
+    // the values again once a frame has passed.
     const id = requestAnimationFrame(() => setColors(read()))
     return () => cancelAnimationFrame(id)
-  }, [theme])
+  }, [])
 
   return useMemo(
     () => ({

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,13 +9,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
     <title>BuildSync AI</title>
-    <script>
-      // Applied before first paint so the theme never flashes.
-      try {
-        const stored = localStorage.getItem('buildsync-theme')
-        if (stored) document.documentElement.dataset.theme = stored
-      } catch (_) {}
-    </script>
   </head>
   <body>
     <div id="root"></div>

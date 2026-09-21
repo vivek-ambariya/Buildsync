@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, ChevronDown, HardHat, LogOut, Moon, Sun, User, WifiOff } from 'lucide-react'
+import { Bell, ChevronDown, HardHat, LogOut, User, WifiOff } from 'lucide-react'
 
 import { cn } from '@/lib/cn'
 import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
-import { useTheme } from '@/lib/theme'
 import { Avatar } from '@/components/ui/Avatar'
 import { Logo } from '@/components/Logo'
 import { SiteProvider, useSite } from '@/features/site-ops/SiteContext'
@@ -79,7 +78,6 @@ function SiteShell() {
 function SiteTopbar() {
   const { user, signOut, roleLabel } = useAuth()
   const { project, projects, selectProject } = useSite()
-  const { theme, toggle } = useTheme()
   const navigate = useNavigate()
   const [switcherOpen, setSwitcherOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
@@ -136,15 +134,6 @@ function SiteTopbar() {
               Offline
             </span>
           )}
-
-          <button
-            type="button"
-            onClick={toggle}
-            aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control text-paper/80 transition-colors active:bg-paper/10"
-          >
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
 
           <button
             type="button"

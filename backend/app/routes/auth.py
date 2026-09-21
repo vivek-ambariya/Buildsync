@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, status
+from pymongo.errors import DuplicateKeyError
 
 from app.core.deps import CurrentUser, Database, user_permissions
-from app.core.security import create_access_token, verify_password
+from app.core.security import create_access_token, hash_password, verify_password
 from app.core.workspaces import (
     authorized_roles,
     home_for,
@@ -11,9 +12,17 @@ from app.core.workspaces import (
     slug_for_role,
 )
 from app.db.mongodb import Collections as C
-from app.models.common import serialize
-from app.schemas.auth import LoginRequest, TokenResponse, UserOut, WorkspaceSwitch
+from app.models.common import serialize, utcnow
+from app.schemas.auth import (
+    SELF_SIGNUP_ROLES,
+    LoginRequest,
+    RegisterRequest,
+    TokenResponse,
+    UserOut,
+    WorkspaceSwitch,
+)
 from app.services.activity_service import log_activity
+from app.utils.formatting import initials
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -103,6 +112,69 @@ async def login(payload: LoginRequest, db: Database):
     return _issue(user, workspace)
 
 
+@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+async def register(payload: RegisterRequest, db: Database):
+    """Create an account and open a session in it.
+
+    The workspace asked for here is the one the account gets, within the
+    limits of `SELF_SIGNUP_ROLES` — Admin is not among them, so no amount of
+    posting to this route produces an administrator.
+
+    The duplicate check is written twice on purpose. The lookup is there to
+    answer with a sentence a person can act on; the `DuplicateKeyError` catch
+    is there because two registrations for the same address can pass that
+    lookup at the same moment, and the unique index on `email` is the thing
+    that actually decides it.
+    """
+    if payload.role not in SELF_SIGNUP_ROLES:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            f"The {label_for(payload.role.value)} workspace cannot be created from the "
+            "sign-up form. Ask an administrator to grant it.",
+        )
+
+    email = payload.email.lower()
+    if await db[C.users].find_one({"email": email}):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"{email} already has a BuildSync account. Sign in instead.",
+        )
+
+    workspace = payload.role.value
+    doc = {
+        "name": payload.name,
+        "email": email,
+        "role": workspace,
+        "roles": [workspace],
+        "title": None,
+        "phone": None,
+        "active": True,
+        "avatar_initials": initials(payload.name),
+        "password_hash": hash_password(payload.password),
+        "created_at": utcnow(),
+        # Nobody created this account but its owner, so there is no creator to
+        # record. The flag is what lets an admin tell the two apart later.
+        "created_by": None,
+        "self_registered": True,
+        "last_active_at": None,
+    }
+
+    try:
+        result = await db[C.users].insert_one(doc)
+    except DuplicateKeyError:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"{email} already has a BuildSync account. Sign in instead.",
+        ) from None
+
+    user = serialize({**doc, "_id": result.inserted_id})
+    await log_activity(
+        db, actor=user, action="created account", entity_type="user",
+        entity_id=user["id"], detail=f"signed up for the {label_for(workspace)} workspace",
+    )
+    return _issue(user, workspace)
+
+
 @router.post("/switch-workspace", response_model=TokenResponse)
 async def switch_workspace(payload: WorkspaceSwitch, db: Database, user: CurrentUser):
     """Move an existing session to another of the account's workspaces.
@@ -125,9 +197,17 @@ async def switch_workspace(payload: WorkspaceSwitch, db: Database, user: Current
             f"This account is not authorized for the {label_for(requested)} workspace.",
         )
 
+    if requested == "admin" and user.get("role") != "admin":
+        if not payload.password or not verify_password(payload.password, doc.get("password_hash", "")):
+            raise HTTPException(
+                status.HTTP_401_UNAUTHORIZED,
+                "Admin password verification required to enter Admin workspace.",
+            )
+
     await log_activity(db, actor=user, action="switched workspace", entity_type="user",
                        entity_id=user["id"], detail=f"{user.get('role')} → {requested}")
     return _issue(serialize(doc), requested)
+
 
 
 @router.get("/me", response_model=UserOut)

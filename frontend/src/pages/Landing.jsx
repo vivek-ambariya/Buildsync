@@ -1,14 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  ArrowDown, ArrowRight, FileSearch, Hammer, MessageSquareText, Moon,
-  Package, Radar, Sun, Wallet,
+  ArrowDown, ArrowRight, FileSearch, Hammer, MessageSquareText,
+  Package, Radar, Wallet,
 } from 'lucide-react'
 
 import { cn } from '@/lib/cn'
 import { useAuth } from '@/lib/auth'
 import { useLenis } from '@/lib/useLenis'
-import { useTheme } from '@/lib/theme'
 import { prefersReducedMotion } from '@/animations'
 import { LogoLink } from '@/components/LogoLink'
 import { Button, ButtonLink } from '@/components/ui/Button'
@@ -68,7 +67,6 @@ const CHAPTERS = [
 export default function Landing() {
   const { status, home } = useAuth()
   const navigate = useNavigate()
-  const { theme, toggle } = useTheme()
   const root = useRef(null)
 
   useLenis(true)
@@ -185,14 +183,6 @@ export default function Landing() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-2">
-            <button
-              type="button"
-              onClick={toggle}
-              className="rounded-control p-2 text-muted transition-colors hover:bg-raised hover:text-ink"
-              aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-            >
-              {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
-            </button>
             {status === 'authenticated' ? (
               <ButtonLink to={home} variant="primary">
                 Open dashboard

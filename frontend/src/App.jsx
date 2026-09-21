@@ -8,10 +8,11 @@ import { Logo } from './components/Logo'
 import { RequireWorkspace } from './components/RequireWorkspace'
 import { useAuth } from './lib/auth'
 
-// Landing and login load eagerly; the application shell is split off so the
-// public page stays light.
+// Landing and the two auth pages load eagerly; the application shell is split
+// off so the public pages stay light.
 import Landing from './pages/Landing'
 import Login from './pages/Login'
+import Signup from './pages/Signup'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Projects = lazy(() => import('./pages/Projects'))
@@ -128,6 +129,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
 
       {/* One workspace per role, each at its own address and behind its own
           guard. The guards are UX: every endpoint below them authorises the

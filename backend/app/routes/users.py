@@ -32,6 +32,7 @@ from app.schemas.user import (
 )
 from app.services.activity_service import log_activity, notify
 from app.services.admin_service import count_admins, public_user, user_detail, user_rows
+from app.utils.formatting import initials as _initials
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -42,13 +43,6 @@ DIRECTORY_FIELDS = {
     "name": 1, "email": 1, "role": 1, "roles": 1, "title": 1,
     "avatar_initials": 1, "phone": 1, "active": 1,
 }
-
-
-def _initials(name: str) -> str:
-    parts = [p for p in name.split() if p]
-    if not parts:
-        return "?"
-    return (parts[0][0] + (parts[-1][0] if len(parts) > 1 else "")).upper()
 
 
 async def _require_user(db, user_id: str) -> dict:

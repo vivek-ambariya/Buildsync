@@ -77,14 +77,33 @@ async def http_error(request: Request, exc: StarletteHTTPException):
     return JSONResponse(status_code=exc.status_code, content={"error": {"message": exc.detail}})
 
 
+def _serialisable(errors: list[dict]) -> list[dict]:
+    """Pydantic's error list, with the parts that cannot become JSON removed.
+
+    A validator that raises `ValueError` has the exception object itself put
+    into `ctx`, and an exception does not survive `json.dumps`. Without this
+    the response handler would fail while reporting the failure, turning every
+    such 422 into a 500 — the one status that tells the client nothing.
+    """
+    cleaned = []
+    for err in errors:
+        item = {k: v for k, v in err.items() if k != "ctx"}
+        ctx = err.get("ctx")
+        if isinstance(ctx, dict):
+            item["ctx"] = {k: str(v) for k, v in ctx.items()}
+        cleaned.append(item)
+    return cleaned
+
+
 @app.exception_handler(RequestValidationError)
 async def validation_error(request: Request, exc: RequestValidationError):
-    first = exc.errors()[0] if exc.errors() else {}
+    errors = exc.errors()
+    first = errors[0] if errors else {}
     field = ".".join(str(p) for p in first.get("loc", [])[1:]) or "request"
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={"error": {"message": f"Check the {field} field: {first.get('msg', 'invalid value')}.",
-                           "fields": exc.errors()}},
+                           "fields": _serialisable(errors)}},
     )
 
 

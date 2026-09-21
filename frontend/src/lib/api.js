@@ -82,10 +82,16 @@ export const api = {
     // server treats it as a request and checks it against their account.
     login: (email, password, selectedRole) =>
       post('/auth/login', { email, password, selected_role: selectedRole || null }),
+    // Self-service sign-up. The workspace is a request like `selected_role`
+    // is on the way in: the server decides what may actually be created, and
+    // refuses Admin outright.
+    register: ({ name, email, password, role }) =>
+      post('/auth/register', { name, email, password, role }),
     me: () => get('/auth/me'),
     workspaces: () => get('/auth/workspaces'),
-    switchWorkspace: (selectedRole) =>
-      post('/auth/switch-workspace', { selected_role: selectedRole }),
+    switchWorkspace: (selectedRole, password) =>
+      post('/auth/switch-workspace', { selected_role: selectedRole, password: password || null }),
+
     demoAccounts: () => get('/auth/demo-accounts'),
   },
   // One guarded entry point per workspace. Each is refused to every other role.

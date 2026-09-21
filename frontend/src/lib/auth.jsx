@@ -116,13 +116,28 @@ export function AuthProvider({ children }) {
   }, [])
 
   /**
+   * Create an account and start using it in the same step.
+   *
+   * The API answers a registration with a session exactly as it answers a
+   * sign-in, so there is no second trip through the login form — the person
+   * who just chose a password does not have to type it again to prove it.
+   */
+  const signUp = useCallback(async ({ name, email, password, role }) => {
+    const result = await api.auth.register({ name, email, password, role })
+    tokenStore.set(result.access_token)
+    setUser(result.user)
+    setStatus('authenticated')
+    return result.user
+  }, [])
+
+  /**
    * Move an open session to another of the account's workspaces.
    *
    * The server re-authorises it from the database and issues a fresh token,
    * so this cannot widen a session — it exchanges one for another.
    */
-  const switchWorkspace = useCallback(async (selectedRole) => {
-    const result = await api.auth.switchWorkspace(selectedRole)
+  const switchWorkspace = useCallback(async (selectedRole, password) => {
+    const result = await api.auth.switchWorkspace(selectedRole, password)
     tokenStore.set(result.access_token)
     setUser(result.user)
     setStatus('authenticated')
@@ -134,6 +149,7 @@ export function AuthProvider({ children }) {
       user,
       status,
       signIn,
+      signUp,
       signOut,
       can: (permission) => Boolean(PERMISSIONS[user?.role]?.[permission]),
       /**
@@ -152,12 +168,17 @@ export function AuthProvider({ children }) {
       switchWorkspace,
       /** The workspace this session is in. */
       workspace: workspaceForRole(user?.role),
-      /** Every workspace the account may open — what the switcher offers. */
-      authorizedWorkspaces: workspacesFor(user?.authorized_roles || []),
+      /** Every workspace the account may open — what the switcher offers.
+       * When currently in Admin mode, return only the Admin workspace to keep Admin mode pure.
+       */
+      authorizedWorkspaces: user?.role === 'admin'
+        ? [workspaceForRole('admin')]
+        : workspacesFor(user?.authorized_roles || []),
       authorizedRoles: user?.authorized_roles || [],
     }),
-    [user, status, signIn, signOut, switchWorkspace],
+    [user, status, signIn, signUp, signOut, switchWorkspace],
   )
+
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

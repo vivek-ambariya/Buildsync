@@ -2,7 +2,6 @@ import { useNavigate } from 'react-router-dom'
 import { Building2, LogOut, Mail, Phone, ShieldCheck } from 'lucide-react'
 
 import { useAuth } from '@/lib/auth'
-import { useTheme } from '@/lib/theme'
 import { useEnter } from '@/animations/useMotion'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
@@ -37,7 +36,6 @@ const CANNOT = [
 
 export default function SiteProfile() {
   const { user, roleLabel, signOut, can } = useAuth()
-  const { theme, toggle } = useTheme()
   const { projects, project, selectProject } = useSite()
   const navigate = useNavigate()
   const scope = useEnter([])
@@ -113,14 +111,6 @@ export default function SiteProfile() {
       </section>
 
       <section className="space-y-2" data-enter>
-        <button
-          type="button"
-          onClick={toggle}
-          className="tap flex w-full items-center justify-between gap-3 rounded-panel border border-line bg-surface px-4 text-base text-ink"
-        >
-          Appearance
-          <span className="text-tiny text-muted">{theme === 'dark' ? 'Dark' : 'Light'}</span>
-        </button>
         <Button
           variant="danger"
           size="lg"
