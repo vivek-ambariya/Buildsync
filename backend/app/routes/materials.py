@@ -6,7 +6,7 @@ from app.db.mongodb import Collections as C
 from app.models.common import serialize, to_object_id, utcnow
 from app.schemas.material import MaterialCreate, MaterialUpdate
 from app.services.activity_service import broadcast_ids, log_activity, notify
-from app.services.project_service import visibility_filter
+from app.services.project_service import scoped_project_query, visibility_filter
 from app.ai.engine import material_metrics, project_schedule_metrics
 
 router = APIRouter(prefix="/materials", tags=["materials"])
@@ -28,9 +28,7 @@ async def index(db: Database, user: CurrentUser, project_id: str | None = None, 
     visible = [p async for p in db[C.projects].find(visibility_filter(user), {"name": 1})]
     names = {str(p["_id"]): p["name"] for p in visible}
 
-    query: dict = {"project_id": {"$in": [p["_id"] for p in visible]}}
-    if project_id and (oid := to_object_id(project_id)):
-        query["project_id"] = oid
+    query: dict = scoped_project_query([p["_id"] for p in visible], project_id)
 
     elapsed_cache: dict[str, int] = {}
     items = []

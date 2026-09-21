@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import {
   ArrowDown, ArrowRight, FileSearch, Hammer, MessageSquareText,
   Package, Radar, Wallet,
@@ -304,12 +304,6 @@ export default function Landing() {
               Enter BuildSync
               <ArrowRight size={16} />
             </Button>
-            <Link
-              to="/login"
-              className="inline-flex h-11 items-center rounded-control border border-line bg-surface px-5 text-body font-medium text-ink transition-colors hover:border-line-strong hover:bg-raised"
-            >
-              Open the full sign-in page
-            </Link>
           </div>
         </div>
       </section>

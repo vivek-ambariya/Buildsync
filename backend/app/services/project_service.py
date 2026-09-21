@@ -3,8 +3,9 @@ from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.ai.engine import project_budget_metrics, project_schedule_metrics
+from app.core.permissions import P, has_permission
 from app.db.mongodb import Collections as C
-from app.models.common import Role, serialize, to_object_id, utcnow
+from app.models.common import serialize, to_object_id, utcnow
 
 
 async def _people_map(db: AsyncIOMotorDatabase) -> dict[str, dict]:
@@ -16,11 +17,43 @@ async def _people_map(db: AsyncIOMotorDatabase) -> dict[str, dict]:
 
 
 def visibility_filter(user: dict) -> dict:
-    """Contractors and site engineers only see projects they are attached to."""
-    if user.get("role") in (Role.admin.value, Role.project_manager.value):
+    """Narrow a project query to the projects `user` is entitled to.
+
+    Only a role holding `projects.view_all` gets the whole portfolio, and only
+    the admin holds it. Everyone else — a project manager included — sees the
+    projects they run or are on the team of. A manager who has not been given
+    a site has no business reading its budget, its drawings or its daily
+    reports, and the role matrix has always said as much; this is the query
+    that finally means it.
+
+    Reading the permission rather than naming roles keeps this in step with
+    `app.core.permissions`, so granting the capability to another role is a
+    change in that file alone.
+    """
+    if has_permission(user.get("role"), P.projects_view_all):
         return {}
     oid = to_object_id(user.get("id"))
     return {"$or": [{"team_ids": oid}, {"manager_id": oid}]}
+
+
+def scoped_project_query(visible_ids, project_id=None) -> dict:
+    """A `project_id` clause that narrows *within* what the caller may see.
+
+    Every list endpoint takes an optional `project_id` to focus on one site.
+    Assigning it straight onto the query replaced the visibility constraint
+    instead of intersecting with it, so naming another site's id was enough to
+    read its tasks, expenses, documents and daily reports whatever the caller's
+    own projects were.
+
+    An id outside `visible_ids` therefore matches nothing, which is what a
+    project you cannot see contains as far as you are concerned. An unparseable
+    id is ignored, as it always was.
+    """
+    ids = list(visible_ids)
+    oid = to_object_id(project_id) if project_id else None
+    if oid is None:
+        return {"project_id": {"$in": ids}}
+    return {"project_id": {"$in": [oid] if oid in ids else []}}
 
 
 async def visible_project_ids(db: AsyncIOMotorDatabase, user: dict) -> list[ObjectId]:
@@ -54,9 +87,11 @@ async def ensure_project_member(
     notification pointing at a project that answers 404. So an assignment
     grants the membership it already implies.
 
-    Admins and project managers are skipped: they see every project
-    regardless, and adding them would fill the site team with people who are
-    not on it. The project's own manager is skipped for the same reason.
+    Only roles that see every project regardless — the admin — are skipped;
+    adding them would fill the site team with people who are not on it. The
+    project's own manager is skipped for the same reason. A project manager is
+    not skipped: since they are scoped to their own sites like everyone else,
+    being given work on one is exactly what has to put them on its team.
 
     Returns whether the team actually changed.
     """
@@ -68,7 +103,7 @@ async def ensure_project_member(
     if role is None:
         person = await db[C.users].find_one({"_id": uid}, {"role": 1})
         role = person.get("role") if person else None
-    if role in (Role.admin.value, Role.project_manager.value):
+    if has_permission(role, P.projects_view_all):
         return False
 
     result = await db[C.projects].update_one(

@@ -15,6 +15,7 @@ from app.services.activity_service import log_activity, notify
 from app.services.project_service import (
     ensure_project_member,
     recalculate_progress,
+    scoped_project_query,
     visibility_filter,
 )
 from app.utils.dates import to_datetime
@@ -82,9 +83,7 @@ async def index(
     visible = [p async for p in db[C.projects].find(visibility_filter(user), {"name": 1})]
     project_names = {str(p["_id"]): p["name"] for p in visible}
 
-    query: dict = {"project_id": {"$in": [p["_id"] for p in visible]}}
-    if project_id and (oid := to_object_id(project_id)):
-        query["project_id"] = oid
+    query: dict = scoped_project_query([p["_id"] for p in visible], project_id)
     if status_filter:
         query["status"] = status_filter
     if assignee_id and (aid := to_object_id(assignee_id)):

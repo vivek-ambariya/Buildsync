@@ -11,7 +11,7 @@ from app.core.permissions import P
 from app.db.mongodb import Collections as C
 from app.models.common import DocumentStatus, serialize, to_object_id, utcnow
 from app.services.activity_service import log_activity
-from app.services.project_service import can_reach_project, visibility_filter
+from app.services.project_service import can_reach_project, scoped_project_query, visibility_filter
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -40,9 +40,7 @@ async def index(db: Database, user: CurrentUser, project_id: str | None = None,
     visible = [p async for p in db[C.projects].find(visibility_filter(user), {"name": 1})]
     names = {str(p["_id"]): p["name"] for p in visible}
 
-    query: dict = {"project_id": {"$in": [p["_id"] for p in visible]}}
-    if project_id and (oid := to_object_id(project_id)):
-        query["project_id"] = oid
+    query: dict = scoped_project_query([p["_id"] for p in visible], project_id)
     if doc_type:
         query["doc_type"] = doc_type
     if q:

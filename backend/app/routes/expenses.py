@@ -7,7 +7,7 @@ from app.models.common import serialize, to_object_id, utcnow
 from app.schemas.expense import ExpenseCreate, ExpenseUpdate
 from app.services.activity_service import log_activity
 from app.services.analytics_service import expense_analytics
-from app.services.project_service import visibility_filter
+from app.services.project_service import scoped_project_query, visibility_filter
 from app.utils.dates import to_datetime
 
 router = APIRouter(prefix="/expenses", tags=["expenses"])
@@ -26,9 +26,7 @@ async def index(db: Database, user: CurrentUser, project_id: str | None = None,
     visible = [p async for p in db[C.projects].find(visibility_filter(user), {"name": 1})]
     names = {str(p["_id"]): p["name"] for p in visible}
 
-    query: dict = {"project_id": {"$in": [p["_id"] for p in visible]}}
-    if project_id and (oid := to_object_id(project_id)):
-        query["project_id"] = oid
+    query: dict = scoped_project_query([p["_id"] for p in visible], project_id)
     if category:
         query["category"] = category
 
